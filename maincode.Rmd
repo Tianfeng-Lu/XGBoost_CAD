@@ -1,0 +1,162 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("./tianfengRwrappers.R")
+# plan("multiprocess",workers = 8)
+```
+
+#冠状动脉
+
+```{r}
+human_coronary_countmatrix <- read.csv("GSE131778_human_coronary_scRNAseq.txt", sep = "\t")
+func <- function(s) {
+  paste0(strsplit(s, ".", fixed = T)[[1]][2], "_", strsplit(s, ".", fixed = T)[[1]][1])
+}
+colnames(human_coronary_countmatrix) <- lapply(colnames(human_coronary_countmatrix), func) # 拆分样本
+```
+
+```{r}
+human_coronary <- CreateSeuratObject(counts = human_coronary_countmatrix, 
+                                     project = "human_coronary", min.cells = 10, min.features = 300) %>% 
+    PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+rm(human_coronary_countmatrix)
+f("PLVAP",human_coronary)
+```
+
+
+# 颈动脉斑块 CA dataset1
+```{r}
+# 批量读取计数矩阵
+# 需要把行名的gene删掉，用vscode修改
+count_mats <- list.files("./CA_GSE155512")
+count_mats <- count_mats[count_mats != "sampleinfo.txt"]
+allList <- lapply(count_mats, function(folder) {
+  CreateSeuratObject(
+    counts = read.csv(paste0("./CA_GSE155512/", folder), sep = "\t"),
+    project = folder, min.cells = 10, min.features = 300
+  )
+})
+# 合并seurat对象
+CA_dataset1 <- merge(allList[[1]],
+  y = allList[-1], add.cell.ids = count_mats,
+  project = "CA_dataset1"
+)
+rm(allList)
+
+CA_dataset1 <- PercentageFeatureSet(CA_dataset1, pattern = "^MT-", col.name = "percent.mt") %>%
+    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+
+```
+
+
+# 颈动脉斑块 CA dataset2
+```{r}
+CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"), 
+                                     project = "CA_dataset2", min.cells = 10, min.features = 300) %>% 
+    PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+```
+
+
+# ECs亚群分析 整合
+## 整合算法可能出现负值，运行SCENIC时舍弃了这些异常值
+```{r}
+# 提取内皮细胞亚群
+ECs_list <- list(subset(CA_dataset1, idents = "Endothelial"), subset(human_coronary, idents = "Endothelial"))
+
+ECs_list <- lapply(X = ECs_list, FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+# 需要分析的差异基因
+int_features <- SelectIntegrationFeatures(object.list = ECs_list)
+# 选择合并的anchor特征
+int_anchors <- FindIntegrationAnchors(object.list = ECs_list, anchor.features = int_features)
+
+# 根据anchor合并
+ECs_combined <- IntegrateData(anchorset = int_anchors)
+
+DefaultAssay(ECs_combined) <- "integrated"
+rm("ECs_list", "int_features", "int_anchors")
+```
+
+## 修改分群
+```{r}
+Idents(ECs_combined) <- ECs_combined$orig.ident
+ECs_combined <- RenameIdents(ECs_combined, "CA_sample1.txt" = "CA", "CA_sample2.txt" = "CA", "CA_sample3.txt" = "CA")
+ECs_combined$conditions <- Idents(ECs_combined)
+DimPlot(ECs_combined, reduction = "umap", label = TRUE, repel = TRUE, split.by = "conditions")
+```
+
+```{r}
+ECs_combined <- FindClusters(ECs_combined, resolution = 0.2)
+DimPlot(ECs_combined, reduction = "umap", label = TRUE)
+# saveRDS(ECs_combined,"ECs_combined.RDS")
+# ECs_combined <- readRDS("ECs_combined.RDS")
+```
+
+
+
+
+
+
+
+# 动脉的marker
+
+```{r,fig.height=5, fig.width=6}
+FeaturePlot(ECs_combined, features = c("SOX17", "SOX5"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 动脉转录因子("SOX17","SOX5")
+FeaturePlot(ECs_combined, features = c("BMX", "HEY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 动脉转录因子("HEY1","HES4")
+FeaturePlot(ECs_combined, features = c("VWF", "PECAM1"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 经典内皮marker
+FeaturePlot(ECs_combined, features = c("ACKR1", "ACKR2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
+FeaturePlot(ECs_combined, features = c("JAG1", "JAG2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
+
+# ACKR1-泛静脉marker  PDPN-泛淋巴marker "JAG1","JAG2"-notch ligands
+```
+
+#动脉 & 静脉 markers from 钟鸣
+```{r,fig.height=5, fig.width=5}
+# expr_matrix <- as.matrix(GetAssayData(ECs_combined,slot = "data")) #获取表达矩阵，normalized
+# write.csv(expr_matrix,"exprMat.csv")
+
+# 动脉
+FeaturePlot(ECs_combined, features = c("GJA5", "NRP1"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
+FeaturePlot(ECs_combined, features = c("EPAS1", "VEGFA"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # VEGFA
+FeaturePlot(ECs_combined, features = c("BMX", "HEY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
+# EFNB2在所有样本的所有细胞基本不表达
+# NRP1 - Neuropilin 1   GJA5 - connexin 40/CX40
+
+
+# 静脉
+FeaturePlot(ECs_combined, features = c("EPHB4", "FLT4"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # FLT4 又名LEGFR3
+FeaturePlot(ECs_combined, features = c("LEFTY1", "LEFTY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
+FeaturePlot(ECs_combined, features = c("NRP2", "TEK"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # Tie2-TEK
+FeaturePlot(ECs_combined, features = c("EMCN", "NR2F2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # endomucin-EMCN  COUP-TF2对应NR2F2
+```
+# 巨噬细胞marker
+```{r}
+FeaturePlot(ECs_combined, features = c("CD68", "THBS1"), split.by = "conditions", min.cutoff = 0, order = F) & theme(legend.position = "right")
+DimPlot(human_coronary)
+DotPlot(ECs_combined, features = c("CD68", "THBS1", "FCGR3A", "CD163", "APOBEC3A", "BIRC3", "THBD", "CCL19", "LAMP3", "CCR7", "CD1C"))
+FeaturePlot(human_coronary, features = c("CD68"))
+```
+
