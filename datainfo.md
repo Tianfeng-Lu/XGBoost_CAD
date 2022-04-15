@@ -1,7 +1,12 @@
 ## GSE155512 
 Smooth muscle cells (SMC) play significant roles in atherosclerosis via phenotypic switching, a pathological process in which SMC dedifferentiation, migration and transdifferentiation into other cell types. Yet, how SMC contribute to pathophysiology of atherosclerosis remains elusive. To reveal the trajectories of SMC transdifferentiation during atherosclerosis and to identify molecular targets for disease therapy, we combined SMC fate mapping and single-cell RNA sequencing of both mouse and human atherosclerotic plaques.
 单细胞基因组学揭示了小鼠和人类平滑肌细胞表型转换过程中的一种新的细胞状态和潜在的动脉粥样硬化治疗靶点。SMC转分化 颈动脉
+multipotent SMC-derived intermediate cell state 中间状态的SMC可以在体外分化成巨噬细胞类型或成纤维细胞类型
+retinoic acid通路对这种分化是重要的
 https://www.ahajournals.org/doi/10.1161/CIRCULATIONAHA.120.048378 
+
+y6a, Vcam1, and Ly6c1, known markers for stem cell, endothelial cell and monocytes/macrophage differentiation
+作者鉴定的SEM Cells也在冠状动脉中出现
 
 ## GSE159677
 Atherogenesis involves an interplay of inflammation, tissue remodeling and cellular transdifferentiation (CTD), making it especially difficult to precisely delineate its pathophysiology. Here we examine the single-cell transcriptome of entire calcified atherosclerotic core (AC) plaques and patient-matched proximal adjacent (PA) portions of carotid artery tissue from patients undergoing carotid endarterectomy. We use a novel tissue dissociation strategy, single-cell RNA sequencing, and systems-biology approaches to analyze the transcriptional profiles of six main cell populations and identify key gene drivers of pathogenic biological processes in vascular smooth muscle cells (VSMCs) and endothelial cells (ECs).

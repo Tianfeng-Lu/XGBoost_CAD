@@ -67,7 +67,7 @@ CA_dataset1 <- PercentageFeatureSet(CA_dataset1, pattern = "^MT-", col.name = "p
 
 # 颈动脉斑块 CA dataset2
 ```{r}
-CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"), 
+CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"), names.field = 2, names.delim = "-",
                                      project = "CA_dataset2", min.cells = 10, min.features = 300) %>% 
     PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
     subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
@@ -76,6 +76,82 @@ CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"),
     RunUMAP(dims = 1:20) %>% 
     FindClusters(resolution = 0.1)
 ```
+
+
+# 添加metadata samples存储完整信息，conditions按区域分，groups按病例分
+```{r}
+Idents(human_coronary) <- human_coronary$orig.ident
+Idents(human_coronary) <- c("1","1","2","2","3","3","4","4")
+human_coronary$samples <- Idents(human_coronary)
+Idents(human_coronary) <- human_coronary$seurat_clusters
+
+Idents(CA_dataset2) <- CA_dataset2$orig.ident
+CA_dataset2 <- RenameIdents(CA_dataset2,'1' = 'AC_1','2' = 'PA_1','3' = 'AC_2','4' = 'PA_2','5' = 'AC_3','6' = 'PA_3')
+UMAPPlot(CA_dataset2)
+
+CA_dataset2$sample <- Idents(CA_dataset2)
+CA_dataset2 <- RenameIdents(CA_dataset2,'AC_1' = 'AC','PA_1' = 'PA','AC_2'= 'AC','PA_2'= 'PA','AC_3'= 'AC','PA_3'= 'PA')
+CA_dataset2$conditions <- Idents(CA_dataset2)
+Idents(CA_dataset2) <- CA_dataset2$orig.ident
+CA_dataset2 <- RenameIdents(CA_dataset2, '1' = 'sp_1','2' = 'sp_1','3' = 'sp_2','4' = 'sp_2','5' = 'sp_3','6' = 'sp_3')
+CA_dataset2$groups <- Idents(CA_dataset2)
+Idents(CA_dataset2) <- CA_dataset2$seurat_clusters
+```
+
+# 保存结果
+```{r}
+saveRDS(human_coronary,"human_coronary.rds")
+saveRDS(CA_dataset1,"CA_dataset1.rds")
+saveRDS(CA_dataset2,"CA_dataset2.rds") #已经经过分组处理了
+```
+
+----
+# 读取结果
+```{r}
+human_coronary <- readRDS("human_coronary.rds")
+CA_dataset1 <- readRDS("CA_dataset1.rds")
+CA_dataset2 <- readRDS("CA_dataset2.rds") #已经经过分组处理了
+```
+
+## 修改分群
+```{r}
+umapplot(CA_dataset2, split.by = "sample")
+umapplot(CA_dataset2,group.by = "groups", split.by = "conditions")
+multi_featureplot(c("HEY1","GJA5","SEMA3G","CXCL12","SOX17","CDH5","PECAM1"),CA_dataset2)
+multi_featureplot(c("ACKR1","PLVAP","ITGA6","PECAM1"),CA_dataset2)
+```
+```{r}
+# table(CA_dataset2$sample)
+
+# 关注cluster 3-6 EC
+# cluster 7 基质细胞
+
+multi_featureplot(c("LYZ","PTPRC","CD69","EPCAM","CDH1","PDGFRB","COL1A2","PECAM1","CLDN5"),CA_dataset2)
+
+Dotplot(c("LUM","MMP2","MGP","DCN","MYH11","ACTA2","CNN1","TAGLN"),CA_dataset2) #cluster 7 细胞可以被认为是modulated SMCs
+CA_dataset2 <- AddModuleScore(CA_dataset2,list(c("LUM","MMP2","MGP","DCN")))
+CA_dataset2 <- AddModuleScore(CA_dataset2,list(c("MYH11","ACTA2","CNN1","TAGLN")))
+multi_featureplot(c("Cluster1","LUM","ACTA2","TAGLN"),CA_dataset2)
+multi_featureplot(c("MMP2","GJA4","PECAM1","ACKR1"), CA_dataset2)
+multi_featureplot(c("MMP2","GJA4","PECAM1","ACKR1"), human_coronary)
+
+```
+# 基质细胞分类
+```{r}
+multi_featureplot(c("LYZ","PTPRC","CD69","PDGFRB","COL1A2","PECAM1","CLDN5"), human_coronary)
+multi_featureplot(c("ACTA2","FN1"),human_coronary)
+umapplot(human_coronary)
+ds0 <- subset(human_coronary, idents = c('0','3','4'))  #human_cor 选择0 3 4  CA_dataset1 选择0，4作为基质细胞 CA_dataset2 选择7和2作为基质细胞
+#CA_dataset2 选择7和2作为基质细胞
+umapplot(ds0,split.by = "samples")
+
+
+saveRDS(ds0,"ds0.rds")
+
+saveRDS(ds1,"ds1.rds")
+
+```
+
 
 
 # ECs亚群分析 整合
@@ -100,63 +176,12 @@ DefaultAssay(ECs_combined) <- "integrated"
 rm("ECs_list", "int_features", "int_anchors")
 ```
 
-## 修改分群
-```{r}
-Idents(ECs_combined) <- ECs_combined$orig.ident
-ECs_combined <- RenameIdents(ECs_combined, "CA_sample1.txt" = "CA", "CA_sample2.txt" = "CA", "CA_sample3.txt" = "CA")
-ECs_combined$conditions <- Idents(ECs_combined)
-DimPlot(ECs_combined, reduction = "umap", label = TRUE, repel = TRUE, split.by = "conditions")
-```
 
 ```{r}
-ECs_combined <- FindClusters(ECs_combined, resolution = 0.2)
-DimPlot(ECs_combined, reduction = "umap", label = TRUE)
-# saveRDS(ECs_combined,"ECs_combined.RDS")
-# ECs_combined <- readRDS("ECs_combined.RDS")
+multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),human_coronary)
+multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset1)
+multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset2)
 ```
 
 
-
-
-
-
-
-# 动脉的marker
-
-```{r,fig.height=5, fig.width=6}
-FeaturePlot(ECs_combined, features = c("SOX17", "SOX5"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 动脉转录因子("SOX17","SOX5")
-FeaturePlot(ECs_combined, features = c("BMX", "HEY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 动脉转录因子("HEY1","HES4")
-FeaturePlot(ECs_combined, features = c("VWF", "PECAM1"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # 经典内皮marker
-FeaturePlot(ECs_combined, features = c("ACKR1", "ACKR2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
-FeaturePlot(ECs_combined, features = c("JAG1", "JAG2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
-
-# ACKR1-泛静脉marker  PDPN-泛淋巴marker "JAG1","JAG2"-notch ligands
-```
-
-#动脉 & 静脉 markers from 钟鸣
-```{r,fig.height=5, fig.width=5}
-# expr_matrix <- as.matrix(GetAssayData(ECs_combined,slot = "data")) #获取表达矩阵，normalized
-# write.csv(expr_matrix,"exprMat.csv")
-
-# 动脉
-FeaturePlot(ECs_combined, features = c("GJA5", "NRP1"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
-FeaturePlot(ECs_combined, features = c("EPAS1", "VEGFA"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # VEGFA
-FeaturePlot(ECs_combined, features = c("BMX", "HEY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
-# EFNB2在所有样本的所有细胞基本不表达
-# NRP1 - Neuropilin 1   GJA5 - connexin 40/CX40
-
-
-# 静脉
-FeaturePlot(ECs_combined, features = c("EPHB4", "FLT4"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # FLT4 又名LEGFR3
-FeaturePlot(ECs_combined, features = c("LEFTY1", "LEFTY2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right")
-FeaturePlot(ECs_combined, features = c("NRP2", "TEK"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # Tie2-TEK
-FeaturePlot(ECs_combined, features = c("EMCN", "NR2F2"), split.by = "conditions", min.cutoff = 0) & theme(legend.position = "right") # endomucin-EMCN  COUP-TF2对应NR2F2
-```
-# 巨噬细胞marker
-```{r}
-FeaturePlot(ECs_combined, features = c("CD68", "THBS1"), split.by = "conditions", min.cutoff = 0, order = F) & theme(legend.position = "right")
-DimPlot(human_coronary)
-DotPlot(ECs_combined, features = c("CD68", "THBS1", "FCGR3A", "CD163", "APOBEC3A", "BIRC3", "THBD", "CCL19", "LAMP3", "CCR7", "CD1C"))
-FeaturePlot(human_coronary, features = c("CD68"))
-```
 
