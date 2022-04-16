@@ -9,7 +9,418 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r}
 library(xgboost)
+library(Matrix)
+library(mclust)
 ```
+
+```{r}
+ds0 <- readRDS("./ds0.rds")
+ds1 <- readRDS("./ds1.rds")
+ds2 <- readRDS("./ds2.rds")
+```
+
+# 分发训练集
+```{r}
+Idents(ds2) <- ds2$conditions
+ds2_AC <- subset(ds2, idents = "AC")
+ds2_PA <- subset(ds2, idents = "PA")
+ds2_AC <- ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+umapplot(ds2_AC)
+ds2_PA <- ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+umapplot(ds2_PA)
+
+AC_markers <- FindAllMarkers(ds2_AC,logfc.threshold = 0.7, min.diff.pct = 0.2)
+PA_markers <- FindAllMarkers(ds2_PA,logfc.threshold = 0.7, min.diff.pct = 0.2)
+```
+
+## 在AC上训练
+```{r}
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+
+set.seed(7)
+index <- c(1:dim(AC_data)[2]) %>% sample(ceiling(0.3*dim(AC_data)[2]), replace = F, prob = NULL)
+
+colnames(AC_data) <- NULL
+
+AC_train_data <- list(data = t(as(AC_data[,-index],"dgCMatrix")), label = AC_label[-index])
+AC_test_data <- list(data = t(as(AC_data[,index],"dgCMatrix")), label = AC_label[index])
+
+# data(agaricus.train, package='xgboost')
+
+AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
+AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
+
+# xgb_params_train = {
+#     'objective':'multi:softprob',
+#     'eval_metric':'mlogloss',
+#     'num_class':self.numbertrainclasses,
+#     'eta':0.2,
+#     'max_depth':6,
+#     'subsample': 0.6}
+# nround = 200
+
+watchlist <- list(train = AC_train, eval = AC_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, AC_train, nrounds = 200, watchlist, verbose = 0)
+
+# 特征提取
+importance <- xgb.importance(colnames(AC_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) #这个cluster和分类没有关系
+
+multi_featureplot(head(importance,9)$Feature,ds2)
+AC_genes <- head(importance, 500) ##选择top500
+
+
+#混淆矩阵
+predict_AC_test <- round(predict(bst_model, newdata = AC_test))
+
+AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true","pre"))
+AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test, 1)
+AC_confuse_matrix_test_prop
+#ROC曲线
+
+# xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
+xgboost_roc <- pROC::roc(AC_test_data$label, predict_AC_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量
+
+```
+
+
+## 在PA上训练
+```{r}
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+
+set.seed(7)
+index <- c(1:dim(PA_data)[2]) %>% sample(ceiling(0.3*dim(PA_data)[2]), replace = F, prob = NULL)
+
+colnames(PA_data) <- NULL
+
+PA_train_data <- list(data = t(as(PA_data[,-index],"dgCMatrix")), label = PA_label[-index])
+PA_test_data <- list(data = t(as(PA_data[,index],"dgCMatrix")), label = PA_label[index])
+
+# data(agaricus.train, pPAkage='xgboost')
+
+PA_train <- xgb.DMatrix(data = PA_train_data$data,label = PA_train_data$label)
+PA_test <- xgb.DMatrix(data = PA_test_data$data,label = PA_test_data$label)
+
+# xgb_params_train = {
+#     'objective':'multi:softprob',
+#     'eval_metric':'mlogloss',
+#     'num_class':self.numbertrainclasses,
+#     'eta':0.2,
+#     'max_depth':6,
+#     'subsample': 0.6}
+# nround = 200
+
+watchlist <- list(train = PA_train, eval = PA_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_PA))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, PA_train, nrounds = 200, watchlist, verbose = 0)
+
+# 特征提取
+importance <- xgb.importance(colnames(PA_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20),n_clusters = 1)
+
+multi_featureplot(head(importance,9)$Feature, ds2)
+PA_genes <- head(importance, 500) ##选择top500
+
+
+#混淆矩阵
+predict_PA_test <- round(predict(bst_model, newdata = PA_test))
+
+PA_confuse_matrix_test <- table(PA_test_data$label, predict_PA_test, dnn=c("true","pre"))
+PA_confuse_matrix_test_prop <- prop.table(PA_confuse_matrix_test,1)
+PA_confuse_matrix_test_prop
+
+adjustedRandIndex(PA_test_data$label, predict_PA_test) #PA分类器性能
+
+#ROC曲线
+
+# xgboost_roc <- pROC::multiclass.roc(PA_test_data$label, predict_PA_test) #多分类ROC
+xgboost_roc <- pROC::roc(PA_test_data$label, predict_PA_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量
+
+```
+## 选择特征common genes of top 500
+## 使用所有来自PA的细胞训练分类器
+## 应用在AC上，计算ARI
+```{r}
+selected_features <- intersect(PA_genes$Feature, AC_genes$Feature)
+
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_data <- PA_data[selected_features,]
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+colnames(PA_data) <- NULL
+
+PA_train_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label)
+
+PA_train <- xgb.DMatrix(data = PA_train_data$data,label = PA_train_data$label)
+
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_PA))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, PA_train, nrounds = 200, verbose = 1)
+
+# 特征提取
+importance <- xgb.importance(colnames(PA_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20),n_clusters = 1)
+
+multi_featureplot(head(importance,9)$Feature, ds2)
+```
+# 应用到AC上
+```{r}
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- AC_data[selected_features,]
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+colnames(AC_data) <- NULL
+
+AC_test_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label)
+
+AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
+
+#计算混淆矩阵
+predict_AC_test <- round(predict(bst_model, newdata = AC_test))
+
+AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true","pre"))
+AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test,1)
+AC_confuse_matrix_test_prop  #分析发育轨迹
+
+#ROC曲线
+# xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
+xgboost_roc <- pROC::roc(AC_test_data$label, predict_AC_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量ROC
+
+# 计算ARI 
+
+adjustedRandIndex(predict_AC_test, AC_test_data$label)
+```
+
+## 选择特征common genes of top 500
+## 使用所有来自AC的细胞训练分类器
+## 应用在PA上，计算ARI
+```{r}
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- AC_data[selected_features,]
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+colnames(AC_data) <- NULL
+
+AC_train_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label)
+
+AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
+
+xgb_ACram <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model2 <- xgb.train(xgb_ACram, AC_train, nrounds = 200, verbose = 1)
+
+# 特征提取
+importance2 <- xgb.importance(colnames(AC_train), model = bst_model2)
+head(importance2)
+xgb.ggplot.importance(head(importance2,20),n_clusters = 1)
+
+multi_featureplot(head(importance2,9)$Feature, ds2)
+```
+
+
+# 应用到PA上
+```{r}
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_data <- PA_data[selected_features,]
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+colnames(PA_data) <- NULL
+
+PA_test_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label)
+
+PA_test <- xgb.DMatrix(data = PA_test_data$data,label = PA_test_data$label)
+
+#计算混淆矩阵
+predict_PA_test <- round(predict(bst_model2, newdata = PA_test))
+
+PA_confuse_matrix_test <- table(PA_test_data$label, predict_PA_test, dnn=c("true","pre"))
+PA_confuse_matrix_test_prop <- prop.table(PA_confuse_matrix_test,1)
+PA_confuse_matrix_test_prop  #分析发育轨迹
+
+#ROC曲线
+# xgboost_roc <- pROC::multiclass.roc(PA_test_data$label, predict_PA_test) #多分类ROC
+xgboost_roc <- pROC::roc(PA_test_data$label, predict_PA_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量ROC
+
+# 计算ARI 
+
+adjustedRandIndex(predict_PA_test, PA_test_data$label)
+```
+
+
+
+```{r}
+umapplot(ds2,split.by = "conditions")
+table(ds2$conditions)
+```
+
+
+# sankey plot
+
+## PA -> AC     ARI 0.3024837
+    pre
+true           0           1           2
+   0 0.980360065 0.003273322 0.016366612
+   1 0.799516908 0.196859903 0.003623188
+   2 0.453004622 0.493066256 0.053929122
+   3 0.002762431 0.052486188 0.944751381
+## AC ->PA    ARI 0.1797689
+    pre
+true           0           1           2           3
+   0 0.027107438 0.287272727 0.682644628 0.002975207
+   1 0.000349895 0.075227432 0.914975507 0.009447166
+   2 0.008130081 0.003252033 0.175609756 0.813008130
+```{r}
+library(plotly)
+c("PA_0", "PA_1", "PA_2", "AC_0","AC_1","AC_2","AC_3", "PA_0", "PA_1", "PA_2")
+fig <- plot_ly(
+    type = "sankey",
+    orientation = "h",
+    node = list(
+      label = c("A1", "A2", "B1", "B2", "C1", "C2"),
+      color = colors_list, 
+      pad = 15,
+      thickness = 20,
+      line = list(
+        color = "black",
+        width = 0.5 )),
+    link = list(
+      source = c(0,1,0,2,3,3),
+      target = c(2,3,3,4,4,5),
+      value =  c(8,4,2,8,4,2)
+    )
+  )
+fig <- fig %>% layout(
+    title = "Basic Sankey Diagram",
+    font = list(
+      size = 10 ))
+
+fig
+
+```
+
+---
+
+
+# 数据集CA_dataset1
+```{r}
+ds1 <- ds1 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+umapplot(ds1)
+f("MYH11",ds1)
+ds1_markers <- FindAllMarkers(ds1,logfc.threshold = 0.5, min.diff.pct = 0.2)
+```
+
+```{r}
+ds1_data <- get_data_table(ds1, highvar = F, type = "data")
+ds1_data <- ds1_data[selected_features,]
+ds1_label <- as.numeric(as.character(Idents(ds1)))
+colnames(ds1_data) <- NULL
+
+ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
+
+ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+
+#计算混淆矩阵
+predict_ds1_test <- round(predict(bst_model, newdata = ds1_test))
+
+ds1_data_confuse_matrix_test <- table(ds1_test_data$label, predict_ds1_test, dnn=c("true","pre"))
+ds1_data_confuse_matrix_test_prop <- prop.table(ds1_data_confuse_matrix_test,1)
+ds1_data_confuse_matrix_test
+ds1_data_confuse_matrix_test_prop  #分析发育轨迹
+
+
+
+#ROC曲线
+# xgboost_roc <- pROC::multiclass.roc(ds1_test_data$label, predict_ds1_test) #多分类ROC
+xgboost_roc <- pROC::roc(ds1_test_data$label, predict_ds1_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量ROC
+
+# 计算ARI 
+
+adjustedRandIndex(predict_ds1_test, ds1_test_data$label)
+```
+# 冠状动脉数据集
+
+
+```{r}
+ds0 <- ds0 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+umapplot(ds0)
+f("MYH11",ds0)
+ds0_markers <- FindAllMarkers(ds0,logfc.threshold = 0.5, min.diff.pct = 0.2)
+```
+
+```{r}
+temp <- get_data_table(ds0, highvar = F, type = "data")
+ds0_data <- matrix(data=0, nrow = length(selected_features), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(selected_features,colnames(temp)))
+
+
+for(i in intersect(selected_features,rownames(temp))){
+  ds0_data[i,] <- temp[i,]
+}
+# rm(temp)
+
+ds0_label <- as.numeric(as.character(Idents(ds0)))
+colnames(ds0_data) <- NULL
+
+ds0_test_data <- list(data = t(as(ds0_data,"dgCMatrix")), label = ds0_label)
+
+ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
+
+#计算混淆矩阵
+predict_ds0_test <- round(predict(bst_model, newdata = ds0_test))
+
+ds0_data_confuse_matrix_test <- table(ds0_test_data$label, predict_ds0_test, dnn=c("true","pre"))
+ds0_data_confuse_matrix_test_prop <- prop.table(ds0_data_confuse_matrix_test,1)
+ds0_data_confuse_matrix_test
+ds0_data_confuse_matrix_test_prop  #分析发育轨迹
+
+
+
+#ROC曲线
+# xgboost_roc <- pROC::multiclass.roc(ds0_test_data$label, predict_ds0_test) #多分类ROC
+xgboost_roc <- pROC::roc(ds0_test_data$label, predict_ds0_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量ROC
+
+# 计算ARI 
+
+adjustedRandIndex(predict_ds0_test, ds0_test_data$label)
+```
+
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
