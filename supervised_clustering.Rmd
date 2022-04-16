@@ -327,19 +327,84 @@ fig
 ```
 
 ---
-
+# varify 部分
 
 # 数据集CA_dataset1
+
+## 在AC上训练  使用top500 in AC
 ```{r}
-ds1 <- ds1 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+temp <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- matrix(data=0, nrow = length(AC_genes$Feature), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(AC_genes$Feature,colnames(temp)))
+
+for(i in intersect(AC_genes$Feature, rownames(temp))){
+  AC_data[i,] <- temp[i,]
+}
+rm(temp)
+
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+
+set.seed(7)
+index <- c(1:dim(AC_data)[2]) %>% sample(ceiling(0.3*dim(AC_data)[2]), replace = F, prob = NULL)
+
+colnames(AC_data) <- NULL
+
+AC_train_data <- list(data = t(as(AC_data[,-index],"dgCMatrix")), label = AC_label[-index])
+AC_test_data <- list(data = t(as(AC_data[,index],"dgCMatrix")), label = AC_label[index])
+
+AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
+AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
+
+
+watchlist <- list(train = AC_train, eval = AC_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, AC_train, nrounds = 200, watchlist, verbose = 0)
+
+# 特征提取
+importance <- xgb.importance(colnames(AC_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) #这个cluster和分类没有关系
+
+multi_featureplot(head(importance,9)$Feature,ds2)
+
+
+#混淆矩阵
+predict_AC_test <- round(predict(bst_model, newdata = AC_test))
+
+AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true","pre"))
+AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test, 1)
+AC_confuse_matrix_test_prop
+#ROC曲线
+
+# xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
+xgboost_roc <- pROC::roc(AC_test_data$label, predict_AC_test)
+plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE, 
+  grid=c(0.1, 0.2),grid.col=c("green", "red"), 
+  max.auc.polygon=TRUE,auc.polygon.col="skyblue", 
+  print.thres=TRUE,main='ROC curve') #前两个分量
+
+```
+
+
+
+```{r}
+ds1 <- ds1 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.15)
 umapplot(ds1)
-f("MYH11",ds1)
+f("FBLN1",ds1)
 ds1_markers <- FindAllMarkers(ds1,logfc.threshold = 0.5, min.diff.pct = 0.2)
 ```
 
 ```{r}
-ds1_data <- get_data_table(ds1, highvar = F, type = "data")
-ds1_data <- ds1_data[selected_features,]
+temp <- get_data_table(ds1, highvar = F, type = "data")
+ds1_data <- matrix(data=0, nrow = length(AC_genes$Feature), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(AC_genes$Feature,colnames(temp)))
+
+for(i in intersect(AC_genes$Feature, rownames(temp))){
+  ds1_data[i,] <- temp[i,]
+}
+rm(temp)
+
 ds1_label <- as.numeric(as.character(Idents(ds1)))
 colnames(ds1_data) <- NULL
 
@@ -369,6 +434,8 @@ plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE,
 
 adjustedRandIndex(predict_ds1_test, ds1_test_data$label)
 ```
+
+
 # 冠状动脉数据集
 
 
@@ -376,10 +443,11 @@ adjustedRandIndex(predict_ds1_test, ds1_test_data$label)
 ds0 <- ds0 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
 umapplot(ds0)
 f("MYH11",ds0)
-ds0_markers <- FindAllMarkers(ds0,logfc.threshold = 0.5, min.diff.pct = 0.2)
+ds0_markers <- FindAllMarkers(ds0,logfc.threshold = 0.7, min.diff.pct = 0.2)
 ```
 
 ```{r}
+selected_features <- AC_genes$Feature
 temp <- get_data_table(ds0, highvar = F, type = "data")
 ds0_data <- matrix(data=0, nrow = length(selected_features), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(selected_features,colnames(temp)))
 
@@ -419,7 +487,12 @@ plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE,
 adjustedRandIndex(predict_ds0_test, ds0_test_data$label)
 ```
 
-
+```{r}
+multi_featureplot(head(importance2,9)$Feature, ds2_AC)
+multi_featureplot(head(importance2,9)$Feature, ds0)
+multi_featureplot(head(importance2,9)$Feature, ds1)
+umapplot(ds1)
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
