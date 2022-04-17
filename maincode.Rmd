@@ -138,17 +138,17 @@ multi_featureplot(c("MMP2","GJA4","PECAM1","ACKR1"), human_coronary)
 ```
 # 基质细胞分类
 ```{r}
-multi_featureplot(c("LYZ","PTPRC","CD69","PDGFRB","COL1A2","PECAM1","CLDN5"), human_coronary)
-multi_featureplot(c("ACTA2","FN1"),human_coronary)
-umapplot(human_coronary)
-ds0 <- subset(human_coronary, idents = c('0','3','4'))  #human_cor 选择0 3 4  CA_dataset1 选择0，4作为基质细胞 CA_dataset2 选择7和2作为基质细胞
+multi_featureplot(c("LYZ","PTPRC","CD69","PDGFRB","COL1A2","PECAM1","CLDN5"), CA_dataset2)
+# multi_featureplot(c("ACTA2","FN1"), CA_dataset2)
+umapplot(CA_dataset2)
+lym_ds2 <- subset(CA_dataset2, idents = c('0','4','9'))  #human_cor 选择0 3 4  CA_dataset1 选择0，4作为基质细胞 CA_dataset2 选择7和2作为基质细胞 myeloid CA_dataset2 1
 #CA_dataset2 选择7和2作为基质细胞
-umapplot(ds0,split.by = "samples")
+umapplot(lym_ds2,split.by = "sample")# 淋巴
+saveRDS(lym_ds2,"lym_ds2.rds")
 
-
-saveRDS(ds0,"ds0.rds")
-
-saveRDS(ds1,"ds1.rds")
+# saveRDS(ds0,"ds0.rds")
+# 
+# saveRDS(ds1,"ds1.rds")
 
 ```
 
@@ -183,5 +183,48 @@ multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset1)
 multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset2)
 ```
 
+```{r}
+genes <- c("LGALS3","CD68","KLF4","CLDN5","VWF","ACTA2")
+multi_featureplot(genes,CA_dataset2)
+Dotplot(genes,CA_dataset2) # 2>5
+multi_featureplot(genes,human_coronary)
+Dotplot(genes,human_coronary)
+```
+# cellchat
+```{r}
 
+```
+
+
+# 差异基因
+```{r}
+umapplot(ds2,split.by = "conditions")
+ds2 <- ds2 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+umapplot(ds2, group.by = "seurat_clusters",split.by = "conditions")
+Idents(ds2) <- ds2$conditions
+ds2_AC <- subset(ds2, idents = "AC")
+ds2_PA <- subset(ds2, idents = "PA")
+ds2_AC <- ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+ds2_PA <- ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+
+umapplot(ds2_AC) + scale_y_continuous(limits = c(-5,15),breaks = NULL) +
+        scale_x_continuous(limits = c(-5,15),breaks = NULL)
+umapplot(ds2_PA)+ scale_y_continuous(limits = c(-5,15),breaks = NULL) +
+        scale_x_continuous(limits = c(-5,15),breaks = NULL)
+
+ds2_markers <- FindAllMarkers(ds2, logfc.threshold = 0.5, min.diff.pct = 0.3)
+
+multi_featureplot(c("DCN","VCAM1","LUM","CNN1","ACTA2","GJA4","OMD","	
+FBLN1","CXCL14","C3"),ds2)
+
+Dotplot(c("DCN","VCAM1","LUM","CNN1","ACTA2","GJA4","OMD","FBLN1","CXCL14","C3"),ds2)
+```
+
+
+
+# 功能分析
+```{r}
+library(org.Hs.eg.db)
+GO_dotplot()
+```
 
