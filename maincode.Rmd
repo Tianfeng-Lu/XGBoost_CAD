@@ -147,7 +147,6 @@ umapplot(lym_ds2,split.by = "sample")# 淋巴
 saveRDS(lym_ds2,"lym_ds2.rds")
 
 # saveRDS(ds0,"ds0.rds")
-# 
 # saveRDS(ds1,"ds1.rds")
 
 ```
@@ -219,7 +218,11 @@ FBLN1","CXCL14","C3"),ds2)
 
 Dotplot(c("DCN","VCAM1","LUM","CNN1","ACTA2","GJA4","OMD","FBLN1","CXCL14","C3"),ds2)
 ```
-
+## annoation
+```{r}
+multi_featureplot(c("LYZ","PTPRC","CD69","PDGFRB","COL1A2","PECAM1","CLDN5"), CA_dataset2)
+f("ACTA2", CA_dataset1)
+```
 
 
 # 功能分析
