@@ -68,13 +68,13 @@ CA_dataset1 <- PercentageFeatureSet(CA_dataset1, pattern = "^MT-", col.name = "p
 # 颈动脉斑块 CA dataset2
 ```{r}
 CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"), names.field = 2, names.delim = "-",
-                                     project = "CA_dataset2", min.cells = 10, min.features = 300) %>% 
-    PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
-    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
-    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
-    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
-    RunUMAP(dims = 1:20) %>% 
-    FindClusters(resolution = 0.1)
+                                   project = "CA_dataset2", min.cells = 10, min.features = 300) %>% 
+  PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+  subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+  RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20) %>% 
+  FindClusters(resolution = 0.1)
 ```
 
 
