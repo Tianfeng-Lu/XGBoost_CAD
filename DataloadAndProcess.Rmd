@@ -1,0 +1,109 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+# First part
+## data filter and normalization
+
+```{r}
+source("./tianfengRwrappers.R")
+```
+
+
+
+# 冠状动脉
+## dataset from *Nat. Med.*
+```{r}
+human_coronary_countmatrix <- read.csv("GSE131778_human_coronary_scRNAseq.txt", sep = "\t")
+func <- function(s) {
+  paste0(strsplit(s, ".", fixed = T)[[1]][2], "_", strsplit(s, ".", fixed = T)[[1]][1])
+}
+colnames(human_coronary_countmatrix) <- lapply(colnames(human_coronary_countmatrix), func) # 拆分样本
+```
+
+```{r}
+human_coronary <- CreateSeuratObject(counts = human_coronary_countmatrix, 
+                                     project = "human_coronary", min.cells = 10, min.features = 300) %>% 
+    PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+rm(human_coronary_countmatrix)
+```
+
+
+# 颈动脉斑块 CA dataset1
+```{r}
+# 批量读取计数矩阵
+# 需要把行名的gene删掉，用vscode修改
+count_mats <- list.files("./CA_GSE155512")
+count_mats <- count_mats[count_mats != "sampleinfo.txt"]
+allList <- lapply(count_mats, function(folder) {
+  CreateSeuratObject(
+    counts = read.csv(paste0("./CA_GSE155512/", folder), sep = "\t"),
+    project = folder, min.cells = 10, min.features = 300
+  )
+})
+# 合并seurat对象
+CA_dataset1 <- merge(allList[[1]],
+  y = allList[-1], add.cell.ids = count_mats,
+  project = "CA_dataset1"
+)
+rm(allList)
+
+CA_dataset1 <- PercentageFeatureSet(CA_dataset1, pattern = "^MT-", col.name = "percent.mt") %>%
+    subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+
+```
+
+
+
+# 颈动脉斑块 CA dataset2
+```{r}
+CA_dataset2 <- CreateSeuratObject(Read10X("./CA_GSE159677/"), names.field = 2, names.delim = "-",
+                                   project = "CA_dataset2", min.cells = 10, min.features = 300) %>% 
+  PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+  subset(subset = nFeature_RNA > 600 & nFeature_RNA < 6000 & nCount_RNA > 1000 &  nCount_RNA < 30000) %>%
+  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+  RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20) %>% 
+  FindClusters(resolution = 0.1)
+```
+
+
+# 添加metadata samples存储完整信息，conditions按区域分，groups按病例分
+```{r}
+Idents(human_coronary) <- human_coronary$orig.ident
+Idents(human_coronary) <- c("1","1","2","2","3","3","4","4")
+human_coronary$samples <- Idents(human_coronary)
+Idents(human_coronary) <- human_coronary$seurat_clusters
+
+Idents(CA_dataset2) <- CA_dataset2$orig.ident
+CA_dataset2 <- RenameIdents(CA_dataset2,'1' = 'AC_1','2' = 'PA_1','3' = 'AC_2','4' = 'PA_2','5' = 'AC_3','6' = 'PA_3')
+UMAPPlot(CA_dataset2)
+
+CA_dataset2$sample <- Idents(CA_dataset2)
+CA_dataset2 <- RenameIdents(CA_dataset2,'AC_1' = 'AC','PA_1' = 'PA','AC_2'= 'AC','PA_2'= 'PA','AC_3'= 'AC','PA_3'= 'PA')
+CA_dataset2$conditions <- Idents(CA_dataset2)
+Idents(CA_dataset2) <- CA_dataset2$orig.ident
+CA_dataset2 <- RenameIdents(CA_dataset2, '1' = 'sp_1','2' = 'sp_1','3' = 'sp_2','4' = 'sp_2','5' = 'sp_3','6' = 'sp_3')
+CA_dataset2$groups <- Idents(CA_dataset2)
+Idents(CA_dataset2) <- CA_dataset2$seurat_clusters
+```
+
+# 保存结果
+```{r}
+saveRDS(human_coronary,"human_coronary.rds")
+saveRDS(CA_dataset1,"CA_dataset1.rds")
+saveRDS(CA_dataset2,"CA_dataset2.rds") #已经经过分组处理了
+```

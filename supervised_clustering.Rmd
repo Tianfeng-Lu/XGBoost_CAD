@@ -32,9 +32,12 @@ umapplot(ds2_AC) + scale_y_continuous(limits = c(-5,15),breaks = NULL) +
 umapplot(ds2_PA)+ scale_y_continuous(limits = c(-5,15),breaks = NULL) +
         scale_x_continuous(limits = c(-5,15),breaks = NULL)
 
-AC_markers <- FindAllMarkers(ds2_AC,logfc.threshold = 0.7, min.diff.pct = 0.2)
-PA_markers <- FindAllMarkers(ds2_PA,logfc.threshold = 0.7, min.diff.pct = 0.2)
+# AC_markers <- FindAllMarkers(ds2_AC,logfc.threshold = 0.7, min.diff.pct = 0.2)
+# PA_markers <- FindAllMarkers(ds2_PA,logfc.threshold = 0.7, min.diff.pct = 0.2)
 ```
+
+
+
 
 ## 在AC上预训练
 ```{r}
