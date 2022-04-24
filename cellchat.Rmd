@@ -1,0 +1,149 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+# Cellchat
+```{r}
+source("./tianfengRwrappers.R")
+library(CellChat)
+```
+
+
+```{r}
+ds2 <- readRDS("ds2.rds")
+CA_dataset2 <- readRDS("CA_dataset2.rds")
+saveRDS(CA_dataset2,"CA_dataset2.rds")
+umapplot(CA_dataset2)
+```
+
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$Classification1
+CA_dataset2 <- FindSubCluster(CA_dataset2, cluster = 'SMC', graph.name = 'SCT_snn',resolution = 0.15 )
+Idents(CA_dataset2) <- CA_dataset2$sub.cluster
+umapplot(CA_dataset2)
+f("DLX6-AS1",CA_dataset2)
+```
+
+# CellChat
+## 配体-受体+辅因子
+```{r}
+cor <- createCellChat(CA_dataset2)
+cellchatDB <- CellChatDB.human
+
+showDatabaseCategory(cellchatDB)
+#cellchatDB_use <- subsetDB(cellchatDB, search = "Secreted Signaling")  #使用特定类型的配体受体相互关系
+
+#指定分析使用的database
+cor@DB <- cellchatDB
+
+#节省计算成本
+cor <- subsetData(cor)
+
+cor <- identifyOverExpressedGenes(cor)
+cor <- identifyOverExpressedInteractions(cor)
+
+#使用蛋白质互作网络，根据基因间相互关系补充表达量
+cor <- projectData(cor, PPI.human)
+
+#推断细胞间通信网络，不要使用并行计算！
+cor <- computeCommunProb(cor)
+#若细胞群中只有少数细胞出现联系(<10个)，则过滤掉它们
+cor <- filterCommunication(cor,min.cells = 10)
+
+#提取表达网络矩阵
+df.net <- subsetCommunication(cor)
+#df.net <- subsetCommunication(cor,source.use = c(5), target.use = c(4), signaling = c("WNT")) #指定分析的通路和细胞类群
+
+#推断信号通路
+cor <- computeCommunProbPathway(cor)
+
+#合并通信网络数据
+cor <- aggregateNet(cor)
+# saveRDS(cor,"CA2_cellchat.rds")
+```
+```{r}
+write.csv(df.net,"./datatable/cellchat_res.csv", row.names = F)
+```
+
+
+
+## cellchat可视化
+```{r,fig.height=6,fig.width=6}
+# cor <- readRDS("CA2_cellchat.rds")
+table(cor@idents)
+groupSize <- as.numeric(table(cor@idents))
+netVisual_circle(cor@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength")
+netVisual_heatmap(cor, measure = "weight", signaling = NULL, color.heatmap = c("#f1f1f1", "#ff2121"))
+
+#一次分析不同细胞亚群
+mat <- cor@net$weight
+for (i in 1:nrow(mat)) {
+  mat2 <- matrix(0, nrow = nrow(mat), ncol = ncol(mat), dimnames = dimnames(mat))
+  mat2[i, ] <- mat[i, ]
+  netVisual_circle(mat2, vertex.weight = groupSize, weight.scale = T, edge.weight.max = max(mat), title.name = rownames(mat)[i])
+}
+
+# pheatmap(mat, display_numbers = FALSE, number_color ="black", cluster_rows = FALSE, 
+         # cluster_cols = FALSE, color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(400), border_color = NA)
+table(cor@idents)
+```
+# mod_SMC -- ACKR3
+
+```{r,fig.height=6,fig.width=6}
+#chord plot
+## 免疫细胞 c(4,5,8,9,11) 和SMC c(2,3,6,7,13)的关系
+netVisual_chord_gene(cor, sources.use = c(4,5,8,9,11), targets.use = c(2,3,6,7,13), lab.cex = 0.5, legend.pos.y = 30)
+
+##SMC内部
+netVisual_chord_gene(cor, sources.use = c(7,13), targets.use = c(2,3,6), lab.cex = 0.5, legend.pos.y = 30)
+```
+
+
+```{r,fig.height=6,fig.width=6}
+#指定pathway
+pathways.show <- c("TNF") #在mod_SMC上调
+# Hierarchy plot
+vertex.receiver = c(2,3,6,7,13) # a numeric vector. 
+netVisual_aggregate(cor, signaling = pathways.show, layout = "hierarchy", vertex.receiver = vertex.receiver)
+netVisual_aggregate(cor, signaling = pathways.show, layout = "circle")
+# netVisual_aggregate(cor, signaling = pathways.show, layout = "chord")
+
+# Heatmap
+netVisual_heatmap(cor, signaling = pathways.show, color.heatmap = c("#f1f1f1", "#ff2121"))
+```
+
+
+```{r,fig.height=6,fig.width=6}
+#可视化单个配体受体对的影响
+netAnalysis_contribution(cor, signaling = pathways.show)
+pairLR.TNF <- extractEnrichedLR(cor, signaling = pathways.show, geneLR.return = FALSE)
+LR.show <- pairLR.TNF[1,] # show one ligand-receptor pair TNF12_CXCR4
+# Hierarchy plot
+
+netVisual_individual(cor, signaling = pathways.show,layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = vertex.receiver)
+netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "circle")
+netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "chord")
+
+
+
+# LR.show <- pairLR.TNF[4,] # show one ligand-receptor pair TNF12_CXCR4
+# Hierarchy plot
+netVisual_individual(cor, signaling = pathways.show,layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = vertex.receiver)
+netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "circle")
+netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "chord")
+
+
+netVisual_bubble(cor, sources.use = 8, targets.use = c(2,3,6,7,13), remove.isolate = FALSE) #T_cell2 作为source
+# netVisual_bubble(cor, sources.use = 4, targets.use = c(1:7), remove.isolate = FALSE) #stromal 作为source
+
+netVisual_bubble(cor, sources.use = 5, targets.use = c(2,3,6,7,13), signaling = c("TNF"), remove.isolate = FALSE)
+```
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
