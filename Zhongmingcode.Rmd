@@ -1,0 +1,174 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("./tianfengRwrappers.R")
+# plan("multiprocess",workers = 8)
+```
+
+# 读取结果
+```{r}
+human_coronary <- readRDS("human_coronary.rds")
+CA_dataset1 <- readRDS("CA_dataset1.rds")
+CA_dataset2 <- readRDS("CA_dataset2.rds") #已经经过分组处理了
+```
+
+## 修改分群
+```{r}
+umapplot(CA_dataset2, split.by = "sample")
+umapplot(CA_dataset2,group.by = "groups", split.by = "conditions")
+multi_featureplot(c("HEY1","GJA5","SEMA3G","CXCL12","SOX17","CDH5","PECAM1"),CA_dataset2)
+multi_featureplot(c("ACKR1","PLVAP","ITGA6","PECAM1"),CA_dataset2)
+```
+
+```{r}
+# table(CA_dataset2$sample)
+
+# 关注cluster 3-6 EC
+# cluster 7 基质细胞
+
+multi_featureplot(c("LYZ","PTPRC","CD69","EPCAM","CDH1","PDGFRB","COL1A2","PECAM1","CLDN5"),CA_dataset2)
+
+Dotplot(c("LUM","MMP2","MGP","DCN","MYH11","ACTA2","CNN1","TAGLN"),CA_dataset2) #cluster 7 细胞可以被认为是modulated SMCs
+CA_dataset2 <- AddModuleScore(CA_dataset2,list(c("LUM","MMP2","MGP","DCN")))
+CA_dataset2 <- AddModuleScore(CA_dataset2,list(c("MYH11","ACTA2","CNN1","TAGLN")))
+multi_featureplot(c("Cluster1","LUM","ACTA2","TAGLN"),CA_dataset2)
+multi_featureplot(c("MMP2","GJA4","PECAM1","ACKR1"), CA_dataset2)
+multi_featureplot(c("MMP2","GJA4","PECAM1","ACKR1"), human_coronary)
+
+```
+# 细胞分类
+```{r}
+multi_featureplot(c("LYZ","PTPRC","CD69","PDGFRB","COL1A2","PECAM1","CLDN5"), CA_dataset1)
+f("LUM",CA_dataset1)
+umapplot(CA_dataset1)
+```
+
+```{r}
+CA_dataset1  <- CA_dataset1  %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.5)
+```
+
+
+```{r}
+Idents(CA_dataset1) <- CA_dataset1$seurat_clusters
+CA_dataset1 <- RenameIdents(CA_dataset1,'0' = 'Macrophage','1'='SMC','2' = 'SMC','3' = 'SMC','4' = 'NK cell',
+                            '5' = 'EC1','6' = 'SMC','10'='Mast cell','8'='Macrophage','11'='Macrophage','12'='B cell','7'='EC1', '9'='EC2')
+Idents(CA_dataset1) <- ordered(Idents(CA_dataset1),levels = c("B cell","EC1","EC2","Macrophage","Mast cell","NK cell","SMC"))
+CA_dataset1$Classification1 <- Idents(CA_dataset1)
+umapplot(CA_dataset1)
+# saveRDS(CA_dataset1,"CA_dataset1.rds")
+
+Idents(CA_dataset2) <- CA_dataset2$seurat_clusters
+umapplot(CA_dataset2)
+CA_dataset2 <- RenameIdents(CA_dataset2,'0' = 'T cell','4' = 'NK cell','9' = 'Neural progenitor','2' = 'Stromal cell','7'='Stromal cell','3'='EC','6'='EC','1'='Macrophage','5'='B cell','8'='Mast cell','10'='B cell')
+Idents(CA_dataset2) <- ordered(Idents(CA_dataset2),levels = c("B cell",'EC','FB',"Macrophage","Mast cell",'Neural progenitor',"NK cell","SMC",'T cell'))
+CA_dataset2$Classification1 <- Idents(CA_dataset2)
+umapplot(CA_dataset2)
+
+#saveRDS(CA_dataset2,"CA_dataset2.rds")
+
+Idents(human_coronary) <- human_coronary$seurat_clusters
+umapplot(human_coronary)
+human_coronary <- RenameIdents(human_coronary,'0' = 'FB','1' = 'Macrophage','2'='EC','3'='SMC','4'='SMC','5' = 'T cell','6' = 'B cell','7'='Neuron','8'='Plasma','9'='Plasma','10'='EC')
+saveRDS(human_coronary,"human_coronary.rds")
+CA_dataset2$Classification1 <- Idents(CA_dataset2)
+umapplot(CA_dataset2)
+```
+
+```{r}
+CA_dataset1_markers <- FindAllMarkers(CA_dataset1, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+CA_dataset2_markers <- FindAllMarkers(CA_dataset2, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+human_coronary_markers <- FindAllMarkers(human_coronary, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+```
+
+
+## 基质细胞
+```{r}
+ds0 <- readRDS("ds0.rds")
+ds1 <- readRDS("ds1.rds")
+ds2 <- readRDS("ds2.rds")
+```
+
+## 去除边角的离群细胞
+```{r}
+# select.cells <- CellSelector(plot = DimPlot(ds1, reduction = "umap")) 
+# ds1 <- subset(ds1, cell = select.cells)
+# umapplot(ds1)
+# saveRDS(ds1,"ds1.rds")
+
+
+# select.cells <- CellSelector(plot = DimPlot(ds0, reduction = "umap")) 
+# ds0 <- subset(ds0, cell = select.cells)
+# umapplot(ds0)
+# saveRDS(ds0,"ds0.rds")
+```
+
+## 细分亚群
+```{r}
+Idents(ds2) <- ds2$conditions
+ds2_AC <- subset(ds2, idents = "AC")
+ds2_PA <- subset(ds2, idents = "PA")
+
+ds0  <- ds0 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+ds1  <- ds1 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+
+ds2_AC <- ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.15)
+ds2_PA <- ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+
+ds2_AC_markers <- FindAllMarkers(ds2_AC, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+ds2_PA_markers <- FindAllMarkers(ds2_PA, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+ds0markers <- FindAllMarkers(ds0, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+ds1markers <- FindAllMarkers(ds1, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+ds2markers <- FindAllMarkers(ds2, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+
+umapplot(ds0)
+umapplot(ds1)
+
+umapplot(ds2_AC)
+umapplot(ds2_PA)
+#umapplot(ds2,split.by = "conditions",group.by = "Classification1")
+
+
+Idents(ds0) <- ds0$seurat_clusters
+ds0 <- RenameIdents(ds0,'0' = 'Fibroblast','1'='SMC','2' = 'Fibromyocyte','3' = 'Pericyte','4'='Pericyte','5'='Unknown')
+
+umapplot(ds0)
+
+Idents(ds1) <- ds1$seurat_clusters
+ds1 <- RenameIdents(ds1,'0' = 'SMC1','1'='Fibromyocyte','2' = 'Unkown1','3' = 'SMC2','4'='Unknown2')
+
+Idents(ds2) <- ds2$seurat_clusters
+ds2 <- RenameIdents(ds2,'0' = 'SMC1','1'='Fibromyocyte','2' = 'SMC2','3' = 'FB','4'='SMC3')
+
+umapplot(ds2)
+umapplot(ds1)
+```
+
+```{r}
+Idents(ds2_PA) <- ds2_PA$seurat_clusters
+umapplot(ds2_PA)
+ds2_PA <- RenameIdents(ds2_PA,'0'='Fibromyocyte','1' = 'SMC1','2' = 'SMC2')
+saveRDS(ds2_PA, file = "ds2_PA.rds")
+
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
+umapplot(ds2_AC)
+ds2_AC <- RenameIdents(ds2_AC,'0'='Fibroblast','1' = 'SMC1','3' = 'SMC2','2' = 'Fibromyocyte')
+Idents(ds2_AC) <- factor(Idents(ds2_AC),levels = c("Fibromyocyte","SMC1","SMC2","Fibroblast"))
+saveRDS(ds2_AC, file = "ds2_AC.rds")
+
+ggsave("ds2_PAumap.svg",plot = umapplot(ds2_PA),device = svg, width = 6, height = 4)
+ggsave("ds2_ACumap.svg",plot = umapplot(ds2_AC),device = svg, width = 6, height = 4)
+```
+
+```{r}
+write.csv(ds2_AC_markers,"ds2_AC_markers.csv")
+write.csv(ds2_PA_markers,"ds2_PA_markers.csv")
+
+```
+

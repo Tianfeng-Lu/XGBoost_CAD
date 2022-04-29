@@ -1,0 +1,408 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+## 数值化
+### ds2训练分类器
+```{r}
+ds2_data <- get_data_table(ds2, highvar = F, type = "data")
+ds2_label <- as.numeric(as.character(Idents(ds2)))
+
+index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
+colnames(ds2_data) <- NULL
+
+ds2_train_data <- list(data = t(as(ds2_data[,-index],"dgCMatrix")), label = ds2_label[-index])
+ds2_test_data <- list(data = t(as(ds2_data[,index],"dgCMatrix")), label = ds2_label[index])
+
+ds2_train <- xgb.DMatrix(data = ds2_train_data$data,label = ds2_train_data$label)
+ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
+
+watchlist <- list(train = ds2_train, eval = ds2_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
+
+eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
+  add_trace(type = "scatter", mode = "markers+lines", 
+            marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+            line = list(color = "#1E90FF80", width = 2)) %>% 
+  layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
+```
+## ds2 -> ds1
+```{r}
+temp <- get_data_table(ds1, highvar = F, type = "data")
+ds1_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
+for(i in intersect(rownames(ds2_data), rownames(temp))){
+  ds1_data[i,] <- temp[i,]
+}
+rm(temp)
+ds1_label <- as.numeric(as.character(Idents(ds1)))
+colnames(ds1_data) <- NULL
+ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
+ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+
+#预测结果
+
+predict_ds1_test <- predict(bst_model, newdata = ds1_test)
+
+predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = length(levels(Idents(ds2))), 
+                           ncol = ncol(ds1), byrow = FALSE, 
+                           dimnames = list(levels(Idents(ds2)),colnames(ds1)))
+
+## 得到分群结果
+ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
+Idents(ds1) <- factor(ds1_res,levels = c(0:4))
+umapplot(ds1)
+```
+
+## 数值化地投射回umap
+```{r}
+embedding <- FetchData(object = ds1, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_ds1))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+   new_scale("color") +
+      geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('4', low = "#FFFFFF00", high = "#b1d6fb") +
+    new_scale("color") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("pre_ds1_umap.svg",device = svg,plot = ggobj,height = 10,width = 10)
+```
+
+#ds2 -> ds0
+```{r}
+Idents(ds0) <- ds0$seurat_clusters
+temp <- get_data_table(ds0, highvar = F, type = "data")
+ds0_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
+for(i in intersect(rownames(ds2_data), rownames(temp))){
+  ds0_data[i,] <- temp[i,]
+}
+rm(temp)
+ds0_label <- as.numeric(as.character(Idents(ds0)))
+colnames(ds0_data) <- NULL
+ds0_test_data <- list(data = t(as(ds0_data,"dgCMatrix")), label = ds0_label)
+ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
+
+#预测结果
+
+predict_ds0_test <- predict(bst_model, newdata = ds0_test)
+
+predict_prop_ds0 <- matrix(data=predict_ds0_test, nrow = length(levels(Idents(ds2))), 
+                           ncol = ncol(ds0), byrow = FALSE, 
+                           dimnames = list(levels(Idents(ds2)),colnames(ds0)))
+
+## 得到分群结果
+ds0_res <- apply(predict_prop_ds0,2,func,rownames(predict_prop_ds0))
+Idents(ds0) <- factor(ds0_res,levels = c(0:4))
+umapplot(ds0)
+```
+```{r}
+embedding <- FetchData(object = ds0, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_ds0))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+   new_scale("color") +
+      geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('4', low = "#FFFFFF00", high = "#b1d6fb") +
+    new_scale("color") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("pre_ds0_umap.svg",device = svg,plot = ggobj,height = 10,width = 10)
+```
+
+
+# PA -> AC
+```{r}
+Idents(ds2_PA) <- ds2_PA$seurat_clusters
+selected_features <- read.csv("./datatable/selected_features.csv", stringsAsFactors = F)
+selected_features <- selected_features$x
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_data <- PA_data[selected_features,]
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+colnames(PA_data) <- NULL
+
+PA_train_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label)
+PA_train <- xgb.DMatrix(data = PA_train_data$data,label = PA_train_data$label)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_PA))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, PA_train, nrounds = 100, verbose = 0)
+```
+
+```{r}
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- AC_data[selected_features,]
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+colnames(AC_data) <- NULL
+AC_test_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label)
+AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
+
+#预测结果
+predict_prop_AC <-predict(bst_model, newdata = AC_test) %>%
+ matrix(nrow = length(levels(Idents(ds2_PA))), 
+                           ncol = ncol(ds2_AC), byrow = FALSE, 
+                           dimnames = list(levels(Idents(ds2_PA)),colnames(ds2_AC)))
+AC_res <- apply(predict_prop_AC,2,func,rownames(predict_prop_AC))
+
+confuse_matrix1 <- table(AC_test_data$label, AC_res, dnn=c("true","pre"))
+sankey_plot(confuse_matrix1,session = "PAtoAC")
+
+Idents(ds2_AC) <- AC_res
+umapplot(ds2_AC)
+```
+
+```{r}
+embedding <- FetchData(object = ds2_AC, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_AC))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("ds2_PAtoAC_umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
+```
+
+## 在ds0上训练
+```{r}
+ds0_data <- get_data_table(ds0, highvar = F, type = "data")
+ds0_label <- as.numeric(as.character(Idents(ds0)))
+
+index <- c(1:dim(ds0_data)[2]) %>% sample(ceiling(0.3*dim(ds0_data)[2]), replace = F, prob = NULL)
+colnames(ds0_data) <- NULL
+
+ds0_train_data <- list(data = t(as(ds0_data[,-index],"dgCMatrix")), label = ds0_label[-index])
+ds0_test_data <- list(data = t(as(ds0_data[,index],"dgCMatrix")), label = ds0_label[index])
+
+ds0_train <- xgb.DMatrix(data = ds0_train_data$data,label = ds0_train_data$label)
+ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
+
+watchlist <- list(train = ds0_train, eval = ds0_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds0))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, ds0_train, nrounds = 100, watchlist, verbose = 0)
+
+eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
+  add_trace(type = "scatter", mode = "markers+lines", 
+            marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+            line = list(color = "#1E90FF80", width = 2)) %>% 
+  layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
+```
+
+```{r}
+importance <- xgb.importance(colnames(ds0_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20), n_clusters = 1) + theme_minimal()
+
+multi_featureplot(head(importance,9)$Feature, ds0) 
+```
+
+```{r}
+Idents(ds2) <- ds2$seurat_clusters 
+temp <- get_data_table(ds2, highvar = F, type = "data")
+ds2_data <- matrix(data=0, nrow = length(rownames(ds0_data)), ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds0_data),colnames(temp)))
+for(i in intersect(rownames(ds2_data), rownames(temp))){
+  ds2_data[i,] <- temp[i,]
+}
+rm(temp)
+ds2_label <- as.numeric(as.character(Idents(ds2)))
+colnames(ds2_data) <- NULL
+ds2_test_data <- list(data = t(as(ds2_data,"dgCMatrix")), label = ds2_label)
+ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
+
+#预测结果
+
+predict_ds2_test <- predict(bst_model, newdata = ds2_test)
+
+predict_prop_ds2 <- matrix(data=predict_ds2_test, nrow = bst_model[["params"]][["num_class"]], 
+                           ncol = ncol(ds2), byrow = FALSE, 
+                           dimnames = list(c(0:(bst_model[["params"]][["num_class"]]-1)),colnames(ds2)))
+
+## 得到分群结果
+ds2_res <- apply(predict_prop_ds2,2,func,rownames(predict_prop_ds2))
+confuse_matrix1 <- table(ds2_test_data$label, ds2_res, dnn=c("true","pre"))
+
+sankey_plot(confuse_matrix1,0:5,0:4,session = "ds0tods2")
+
+Idents(ds2) <- factor(ds2_res,levels = c(0:5))
+umapplot(ds2)
+
+```
+
+```{r}
+embedding <- FetchData(object = ds2, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_ds2))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('4', low = "#FFFFFF00", high = "#b1d6fb") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`5`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `5`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('5', low = "#FFFFFF00", high = "#fd9999") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("ds0tods2umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
+```
+
+
+```{r}
+
+Idents(ds1) <- ds1$seurat_clusters
+temp <- get_data_table(ds1, highvar = F, type = "data")
+ds1_data <- matrix(data=0, nrow = length(rownames(ds0_data)), ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds0_data),colnames(temp)))
+for(i in intersect(rownames(ds1_data), rownames(temp))){
+  ds1_data[i,] <- temp[i,]
+}
+rm(temp)
+ds1_label <- as.numeric(as.character(Idents(ds1)))
+colnames(ds1_data) <- NULL
+ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
+ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+
+#预测结果
+
+predict_ds1_test <- predict(bst_model, newdata = ds1_test)
+
+predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = bst_model[["params"]][["num_class"]], 
+                           ncol = ncol(ds1), byrow = FALSE, 
+                           dimnames = list(c(0:(bst_model[["params"]][["num_class"]]-1)),colnames(ds1)))
+
+## 得到分群结果
+ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
+Idents(ds1) <- factor(ds1_res,levels = c(0:5))
+umapplot(ds1)
+
+confuse_matrix <- table(ds1_test_data$label, ds1_res, dnn=c("true","pre"))
+sankey_plot(confuse_matrix,c(0:4),c(0:4),session = "ds0tods1")
+```
+
+```{r}
+embedding <- FetchData(object = ds1, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_ds1))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('4', low = "#FFFFFF00", high = "#b1d6fb") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`5`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `5`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('5', low = "#FFFFFF00", high = "#fd9999") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("ds0tods1umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

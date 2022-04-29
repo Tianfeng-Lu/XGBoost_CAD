@@ -150,6 +150,13 @@ DimPlot(ds2)
 ```
 ```{r}
 sep = 0.4 #LUM的表达模式
-surfaceplot("IGFBP2", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = -0.1)
+surfaceplot("LUM", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = -0.1)
+```
+
+
+## dataset0 的modulated_SMC在哪里
+```{r, fig.width=6,fig.height=6}
+fibromyocyte_markers <- c("IGFBP2","BGN","DKK3","VCAN","RAMP1","SGCA","MYH10","FMOD","KRT8")
+multi_featureplot(fibromyocyte_markers,ds0)
 ```
 

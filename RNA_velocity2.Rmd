@@ -1,0 +1,193 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(velocyto.R)
+library(SeuratWrappers)
+library(Seurat)
+source("tianfengRwrappers.R")
+
+```
+
+```{r}
+# dataset1
+velodata1 <- ReadVelocity(file ="./velo_data/RPE004.loom")
+velodata2 <- ReadVelocity(file ="./velo_data/RPE005.loom")
+velodata3 <- ReadVelocity(file ="./velo_data/RPE006.loom")
+```
+
+
+```{r}
+#匹配两次的barcode
+func <- function(s)
+{
+  s <- strsplit(s,".*:",fixed = F)[[1]][2]
+  s <- strsplit(s,"x",fixed = T)[[1]]
+  s <- paste0("CA_sample1.txt_",s)#s为barcode
+  return(s)
+}
+
+velodata1[["spliced"]]@Dimnames[[2]] = as.character(lapply(velodata1[["spliced"]]@Dimnames[[2]],func))
+velodata1[["unspliced"]]@Dimnames[[2]] = as.character(lapply(velodata1[["unspliced"]]@Dimnames[[2]],func))
+velodata1[["ambiguous"]]@Dimnames[[2]] = as.character(lapply(velodata1[["ambiguous"]]@Dimnames[[2]],func))
+
+
+func <- function(s)
+{
+  s <- strsplit(s,".*:",fixed = F)[[1]][2]
+  s <- strsplit(s,"x",fixed = T)[[1]]
+  s <- paste0("CA_sample2.txt_",s)
+  return(s)
+}
+
+velodata2[["spliced"]]@Dimnames[[2]] = as.character(lapply(velodata2[["spliced"]]@Dimnames[[2]],func))
+velodata2[["unspliced"]]@Dimnames[[2]] = as.character(lapply(velodata2[["unspliced"]]@Dimnames[[2]],func))
+velodata2[["ambiguous"]]@Dimnames[[2]] = as.character(lapply(velodata2[["ambiguous"]]@Dimnames[[2]],func))
+
+
+func <- function(s)
+{
+  s <- strsplit(s,".*:",fixed = F)[[1]][2]
+  s <- strsplit(s,"x",fixed = T)[[1]]
+  s <- paste0("CA_sample3.txt_",s)
+  return(s)
+}
+
+velodata3[["spliced"]]@Dimnames[[2]] = as.character(lapply(velodata3[["spliced"]]@Dimnames[[2]],func))
+velodata3[["unspliced"]]@Dimnames[[2]] = as.character(lapply(velodata3[["unspliced"]]@Dimnames[[2]],func))
+velodata3[["ambiguous"]]@Dimnames[[2]] = as.character(lapply(velodata3[["ambiguous"]]@Dimnames[[2]],func))
+```
+
+
+```{r}
+CA_dataset1 <- readRDS("CA_dataset1.rds")
+sp1_velo <- as.Seurat(x = velodata1)
+sp2_velo <- as.Seurat(x = velodata2)
+sp3_velo <- as.Seurat(x = velodata3)
+merge_velo <- merge(sp1_velo, c(sp2_velo,sp3_velo))
+merge_velo <- subset(merge_velo, cells = WhichCells(CA_dataset1))
+rm(sp1_velo)
+rm(sp2_velo)
+rm(sp3_velo)
+rm(velodata1)
+rm(velodata2)
+rm(velodata3)
+```
+
+
+```{r}
+merge_velo <- merge_velo %>% 
+    PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F,assay = "spliced") %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+
+VlnPlot(merge_velo,"percent.mt",group.by = "orig.ident")
+VlnPlot(merge_velo, features = c("nFeature_spliced", "nCount_spliced"), ncol = 2,group.by = "orig.ident")
+
+DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
+
+merge_velo@reductions[["umap"]] <- CA_dataset1@reductions[["umap"]]
+merge_velo@reductions[["umap"]]@cell.embeddings <-  CA_dataset1@reductions[["umap"]]@cell.embeddings[colnames(merge_velo),]
+
+DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
+
+umapplot(CA_dataset1)
+f("LUM",merge_velo)
+f("CNN1",CA_dataset1)
+
+```
+
+
+```{r}
+saveRDS(merge_velo,"dataset1_velo.RDS")
+```
+
+
+```{r}
+merge_velo <- readRDS("dataset1_velo.RDS")
+merge_velo <- RunVelocity(object = merge_velo, deltaT = 1, kCells = 25, fit.quantile = 0.02, ncores = 3) # fitting gamma coefficients 用时长
+```
+
+
+```{r}
+# saveRDS(merge_velo,"dataset2_AC_velo.RDS")
+# merge_velo <- readRDS("dataset2_AC_velo.RDS")
+ident.colors <- colors_list[1:length(x = levels(x = merge_velo))]
+names(x = ident.colors) <- levels(x = merge_velo)
+cell.colors <- ident.colors[Idents(object = merge_velo)]
+
+names(x = cell.colors) <- colnames(x = merge_velo)
+png("dataset1_velocity.png")
+show.velocity.on.embedding.cor(emb = Embeddings(object = merge_velo, reduction = "umap"), vel = Tool(object = merge_velo, slot = "RunVelocity"), n = 200, scale = "sqrt", cell.colors = ac(x = cell.colors, alpha = 0.5), 
+    cex = 0.8, arrow.scale = 3, show.grid.flow = TRUE, min.grid.cell.mass = 0.5, grid.n = 40, arrow.lwd = 1, 
+    do.par = FALSE, cell.border.alpha = 0.1)
+dev.off()
+
+# plot <- tSNE.velocity.plot(vel = Tool(object = sp1_velo, slot = "RunVelocity"))
+```
+
+
+```{r}
+source("../vascular-analysis/seuratToAnnDataCombined.R")
+```
+
+```{r}
+h5ad_output <- "PA_merge_velo.h5ad"  
+
+library(reticulate)
+library(Matrix)
+writeMM(t(merge_velo@assays$RNA@counts), file='combined.mtx')
+writeMM(t(merge_velo@assays$spliced@counts), file='spliced.mtx')
+writeMM(t(merge_velo@assays$unspliced@counts), file='unspliced.mtx')
+write.csv(rownames(merge_velo@assays$spliced@counts), file = "genes.csv", row.names = FALSE)
+write.csv(merge_velo@reductions$umap@cell.embeddings, file = "umap.csv", row.names = FALSE)
+write.csv(merge_velo@reductions$pca@cell.embeddings, file = "pca.csv", row.names = FALSE)
+
+write.csv(colnames(merge_velo@assays$spliced@counts), file = "cells.csv", row.names = FALSE)
+write.csv(merge_velo@meta.data, file = "meta.csv", row.names = FALSE)
+source_python('~/scRNAseq/vascular-analysis/build.py')
+build(h5ad_output, pca = TRUE, umap = TRUE)
+file.remove('combined.mtx')
+file.remove('spliced.mtx')
+file.remove('unspliced.mtx')
+file.remove('genes.csv')
+file.remove('cells.csv')
+file.remove('umap.csv')
+
+file.remove('pca.csv')
+file.remove('meta.csv')
+
+
+```
+
+
+# 只在SMC亚群中进行
+```{r}
+SMC_velo <- subset(merge_velo, idents = "SMC")
+RunVelocity(object = SMC_velo, deltaT = 1, kCells = 25, fit.quantile = 0.02)
+ident.colors <- colors_list[1:length(x = levels(x = SMC_velo))]
+names(x = ident.colors) <- levels(x = SMC_velo)
+cell.colors <- ident.colors[Idents(object = SMC_velo)]
+
+names(x = cell.colors) <- colnames(x = SMC_velo)
+png("SMC_velocity.png")
+show.velocity.on.embedding.cor(emb = Embeddings(object = SMC_velo, reduction = "umap"), vel = Tool(object = SMC_velo, slot = "RunVelocity"), n = 200, scale = "sqrt", cell.colors = ac(x = cell.colors, alpha = 0.5), 
+    cex = 0.8, arrow.scale = 3, show.grid.flow = TRUE, min.grid.cell.mass = 0.5, grid.n = 40, arrow.lwd = 1, 
+    do.par = FALSE, cell.border.alpha = 0.1)
+dev.off()
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

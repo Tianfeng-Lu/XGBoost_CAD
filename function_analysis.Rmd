@@ -24,7 +24,7 @@ ds1 <- readRDS("ds1.rds")
 ```{r}
 select.cells <- CellSelector(plot = DimPlot(ds2, reduction = "umap")) #去除边角的离群细胞
 ds2 <- subset(ds2, cell = select.cells)
-saveRDS(ds2,"ds2.rds")
+# saveRDS(ds2,"ds2.rds")
 umapplot(ds2,split.by = "conditions")
 ds2 <- ds2 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.15)
 umapplot(ds2, group.by = "seurat_clusters",split.by = "conditions")

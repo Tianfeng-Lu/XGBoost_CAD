@@ -22,19 +22,30 @@ ds2 <- readRDS("./ds2.rds")
 
 # 分发训练集
 ```{r}
-Idents(ds2) <- ds2$conditions
-ds2_AC <- subset(ds2, idents = "AC")
-ds2_PA <- subset(ds2, idents = "PA")
-ds2_AC <- ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
-ds2_PA <- ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
-umapplot(ds2_AC) + scale_y_continuous(limits = c(-5,15),breaks = NULL) +
-        scale_x_continuous(limits = c(-5,15),breaks = NULL)
-umapplot(ds2_PA)+ scale_y_continuous(limits = c(-5,15),breaks = NULL) +
-        scale_x_continuous(limits = c(-5,15),breaks = NULL)
+# Idents(ds2) <- ds2$conditions
+# ds2_AC <- subset(ds2, idents = "AC")
+# ds2_PA <- subset(ds2, idents = "PA")
+# ds2_AC <- ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+# ds2_PA <- ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
+# umapplot(ds2_AC) + scale_y_continuous(limits = c(-5,15),breaks = NULL) +
+#         scale_x_continuous(limits = c(-5,15),breaks = NULL)
+# umapplot(ds2_PA)+ scale_y_continuous(limits = c(-5,15),breaks = NULL) +
+#         scale_x_continuous(limits = c(-5,15),breaks = NULL)
+# 
+# AC_markers <- FindAllMarkers(ds2_AC,logfc.threshold = 0.7, min.diff.pct = 0.2)
+# # PA_markers <- FindAllMarkers(ds2_PA,logfc.threshold = 0.7, min.diff.pct = 0.2)
+# write.csv(AC_markers,"AC_SMC_markers.csv")
 
-AC_markers <- FindAllMarkers(ds2_AC,logfc.threshold = 0.7, min.diff.pct = 0.2)
-# PA_markers <- FindAllMarkers(ds2_PA,logfc.threshold = 0.7, min.diff.pct = 0.2)
-write.csv(AC_markers,"AC_SMC_markers.csv")
+ds2_AC <- readRDS("ds2_AC.rds")
+ds2_PA <- readRDS("ds2_PA.rds")
+
+umapplot(ds2_AC)
+umapplot(ds2_PA)
+
+ds2_AC$Classification <- Idents(ds2_AC)
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
+ds2_PA$Classification <- Idents(ds2_PA)
+Idents(ds2_PA) <- ds2_PA$seurat_clusters
 ```
 
 
@@ -42,6 +53,8 @@ write.csv(AC_markers,"AC_SMC_markers.csv")
 
 ## 在AC上预训练
 ```{r}
+ds2_AC$Classification <- Idents(ds2_AC)
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
 AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
 AC_label <- as.numeric(as.character(Idents(ds2_AC)))
 
@@ -57,7 +70,7 @@ AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
 AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
 
 # xgb_params_train = {
-#     'objective':'multi:softprob',
+#     'objective':'multi:softmax',
 #     'eval_metric':'mlogloss',
 #     'num_class':self.numbertrainclasses,
 #     'eta':0.2,
@@ -70,16 +83,24 @@ xgb_param <- list(eta = 0.2, max_depth = 6,
                   subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
                   objective = "multi:softmax", eval_metric = 'mlogloss')
 
-bst_model <- xgb.train(xgb_param, AC_train, nrounds = 200, watchlist, verbose = 0)
+bst_model <- xgb.train(xgb_param, AC_train, nrounds = 100, watchlist, verbose = 0)
+
+eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
+  add_trace(type = "scatter", mode = "markers+lines", 
+            marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+            line = list(color = "#1E90FF80", width = 2)) %>% 
+  layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
+
 ```
 
 ```{r,fig.height=4,fig.width=4}
 # 特征提取
 importance <- xgb.importance(colnames(AC_train), model = bst_model)
 head(importance)
-xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_minimal()
+xgb.ggplot.importance(head(importance,20), n_clusters = 1) + theme_minimal()
 
-multi_featureplot(head(importance,9)$Feature,ds2) 
+multi_featureplot(head(importance,9)$Feature, ds2_AC) 
 AC_genes <- head(importance, 500) ##选择top500
 
 write.csv(AC_genes, "./datatable/AC_features.csv", row.names = F)
@@ -91,15 +112,7 @@ AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true
 AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test, 1)
 AC_confuse_matrix_test_prop
 
-x <- c("AC_0", "AC_1", "AC_2", "AC_3")
-y <- c("AC_0", "AC_1", "AC_2", "AC_3")
-prop <- as.numeric(AC_confuse_matrix_test_prop)
-data <- expand.grid(x = x, y = y) %>% bind_cols(prop = prop)
-plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
-  geom_point()+
-  scale_size_continuous(range = c(0, 10)) + # Adjust as required.
-  labs(x = NULL, y = NULL) + theme_bw()
-ggsave("./plots/AC_pretrain.png", plot = plot, device = png,width = 5,height = 4)
+confuse_bubblemat(AC_confuse_matrix_test_prop, c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2"), c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2"),"AC_pretrain")
 
 #ROC曲线
 xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
@@ -110,6 +123,9 @@ adjustedRandIndex(AC_test_data$label, predict_AC_test) #分类器性能
 
 ## 在PA上训练
 ```{r}
+ds2_PA$Classification <- Idents(ds2_PA)
+Idents(ds2_PA) <- ds2_PA$seurat_clusters
+
 PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
 PA_label <- as.numeric(as.character(Idents(ds2_PA)))
 set.seed(7)
@@ -126,7 +142,13 @@ watchlist <- list(train = PA_train, eval = PA_test)
 xgb_param <- list(eta = 0.2, max_depth = 6, 
                   subsample = 0.6,  num_class = length(table(Idents(ds2_PA))),
                   objective = "multi:softmax", eval_metric = 'mlogloss')
-bst_model <- xgb.train(xgb_param, PA_train, nrounds = 200, watchlist, verbose = 0)
+bst_model <- xgb.train(xgb_param, PA_train, nrounds = 100, watchlist, verbose = 0)
+eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
+  add_trace(type = "scatter", mode = "markers+lines", 
+            marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+            line = list(color = "#1E90FF80", width = 2)) %>% 
+  layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
 ```
 
 ```{r,fig.height=4,fig.width=4}
@@ -135,7 +157,7 @@ importance <- xgb.importance(colnames(PA_train), model = bst_model)
 head(importance)
 xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_minimal()
 
-multi_featureplot(head(importance,9)$Feature, ds2)
+multi_featureplot(head(importance,9)$Feature, ds2_PA)
 PA_genes <- head(importance, 500) ##选择top500
 write.csv(PA_genes, "./datatable/PA_features.csv", row.names = F)
 
@@ -146,15 +168,7 @@ PA_confuse_matrix_test <- table(PA_test_data$label, predict_PA_test, dnn=c("true
 PA_confuse_matrix_test_prop <- prop.table(PA_confuse_matrix_test,1)
 PA_confuse_matrix_test_prop
 
-x <- c("PA_0", "PA_1", "PA_2")
-y <- c("PA_0", "PA_1", "PA_2")
-prop <- as.numeric(PA_confuse_matrix_test_prop)
-data <- expand.grid(x = x, y = y) %>% bind_cols(prop = prop)
-plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
-  geom_point()+
-  scale_size_continuous(range = c(0, 10)) + # Adjust as required.
-  labs(x = NULL, y = NULL) + theme_bw()
-ggsave("./plots/PA_pretrain.png", plot = plot, device = png,width = 5,height = 4)
+confuse_bubblemat(PA_confuse_matrix_test_prop,c("Fibromyocyte", "SMC1", "SMC2"),c("Fibromyocyte", "SMC1", "SMC2"),"PA_pretrain")
 
 #ROC曲线
 
@@ -162,6 +176,8 @@ xgboost_roc <- pROC::multiclass.roc(PA_test_data$label, predict_PA_test) #多分
 xgboost_roc[["auc"]]
 adjustedRandIndex(PA_test_data$label, predict_PA_test) #PA分类器性能
 ```
+
+
 ## 选择特征common genes of top 500
 ## 使用所有来自PA的细胞训练分类器
 ## 应用在AC上，计算ARI
@@ -169,6 +185,8 @@ adjustedRandIndex(PA_test_data$label, predict_PA_test) #PA分类器性能
 selected_features <- intersect(PA_genes$Feature, AC_genes$Feature)
 write.csv(selected_features, "./datatable/selected_features.csv", row.names = F)
 
+selected_features <- read.csv("./datatable/selected_features.csv", stringsAsFactors = F)
+selected_features <- selected_features$x
 PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
 PA_data <- PA_data[selected_features,]
 PA_label <- as.numeric(as.character(Idents(ds2_PA)))
@@ -180,7 +198,7 @@ xgb_param <- list(eta = 0.2, max_depth = 6,
                   subsample = 0.6,  num_class = length(table(Idents(ds2_PA))),
                   objective = "multi:softmax", eval_metric = 'mlogloss')
 
-bst_model <- xgb.train(xgb_param, PA_train, nrounds = 200, verbose = 1)
+bst_model <- xgb.train(xgb_param, PA_train, nrounds = 100, verbose = 0)
 
 # 特征提取
 importance <- xgb.importance(colnames(PA_train), model = bst_model)
@@ -202,222 +220,180 @@ AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
 
 #计算混淆矩阵
 predict_AC_test <- round(predict(bst_model, newdata = AC_test))
-
 AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true","pre"))
 AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test,1)
 AC_confuse_matrix_test_prop  #分析发育轨迹
 
-x <- c("AC_0", "AC_1", "AC_2", "AC_3")
-y <- c("PA_0", "PA_1", "PA_2")
-prop <- as.numeric(AC_confuse_matrix_test_prop)
-data <- expand.grid(x = x, y = y) %>% bind_cols(prop = prop)
-plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
-  geom_point()+
-  scale_size_continuous(range = c(0, 10)) + 
-  labs(x = "clusters", y = "inferred from") + theme_bw()
+confuse_bubblemat(AC_confuse_matrix_test_prop,c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2"), c("Fibromyocyte", "SMC1", "SMC2"), "PAtoAC")
 
-ggsave("./plots/PAtoAC_train.png", plot = plot, device = png, width = 5,height = 4)
 
 #ROC曲线
 xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
 xgboost_roc[["auc"]]
 
-# multi_featureplot(head(importance,4)$Feature, ds2, split.by = "conditions")
-# multi_featureplot(head(importance,9)$Feature, ds2_AC)
-
 # 计算ARI 
 adjustedRandIndex(predict_AC_test, AC_test_data$label)
 ```
-
-<!-- # 选择特征common genes of top 500 -->
-<!-- ## 使用所有来自AC的细胞训练分类器 -->
-
-<!-- ```{r} -->
-<!-- AC_data <- get_data_table(ds2_AC, highvar = F, type = "data") -->
-<!-- AC_data <- AC_data[selected_features,] -->
-<!-- AC_label <- as.numeric(as.character(Idents(ds2_AC))) -->
-<!-- colnames(AC_data) <- NULL -->
-
-<!-- AC_train_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label) -->
-
-<!-- AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label) -->
-
-<!-- xgb_ACram <- list(eta = 0.2, max_depth = 6,  -->
-<!--                   subsample = 0.6,  num_class = length(table(Idents(ds2_AC))), -->
-<!--                   objective = "multi:softmax", eval_metric = 'mlogloss') -->
-
-<!-- bst_model2 <- xgb.train(xgb_ACram, AC_train, nrounds = 200, verbose = 1) -->
-
-<!-- # 特征提取 -->
-<!-- importance2 <- xgb.importance(colnames(AC_train), model = bst_model2) -->
-<!-- head(importance2) -->
-<!-- xgb.ggplot.importance(head(importance2,20),n_clusters = 1) -->
-
-<!-- multi_featureplot(head(importance2,9)$Feature, ds2) -->
-<!-- ``` -->
-
-
-<!-- ## 应用在PA上，计算ARI -->
-<!-- ```{r} -->
-<!-- PA_data <- get_data_table(ds2_PA, highvar = F, type = "data") -->
-<!-- PA_data <- PA_data[selected_features,] -->
-<!-- PA_label <- as.numeric(as.character(Idents(ds2_PA))) -->
-<!-- colnames(PA_data) <- NULL -->
-
-<!-- PA_test_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label) -->
-
-<!-- PA_test <- xgb.DMatrix(data = PA_test_data$data,label = PA_test_data$label) -->
-
-<!-- #计算混淆矩阵 -->
-<!-- predict_PA_test <- round(predict(bst_model2, newdata = PA_test)) -->
-
-<!-- PA_confuse_matrix_test <- table(PA_test_data$label, predict_PA_test, dnn=c("true","pre")) -->
-<!-- PA_confuse_matrix_test_prop <- prop.table(PA_confuse_matrix_test,1) -->
-<!-- PA_confuse_matrix_test_prop  #分析发育轨迹 -->
-
-<!-- #ROC曲线 -->
-<!-- # xgboost_roc <- pROC::multiclass.roc(PA_test_data$label, predict_PA_test) #多分类ROC -->
-<!-- xgboost_roc <- pROC::roc(PA_test_data$label, predict_PA_test) -->
-<!-- plot(xgboost_roc, print.auc=TRUE, auc.polygon=TRUE,  -->
-<!--   grid=c(0.1, 0.2),grid.col=c("green", "red"),  -->
-<!--   max.auc.polygon=TRUE,auc.polygon.col="skyblue",  -->
-<!--   print.thres=TRUE,main='ROC curve') #前两个分量ROC -->
-
-<!-- # 计算ARI  -->
-
-<!-- adjustedRandIndex(predict_PA_test, PA_test_data$label) -->
-<!-- ``` -->
-
-
-
-```{r}
-umapplot(ds2,split.by = "conditions")
-table(ds2$conditions)
-```
-
-
 # sankey plot
-
-## PA -> AC     ARI 0.3024837
-```
-    pre
-true           0           1           2
-   0 0.980360065 0.003273322 0.016366612
-   1 0.799516908 0.196859903 0.003623188
-   2 0.453004622 0.493066256 0.053929122
-   3 0.002762431 0.052486188 0.944751381
-```
-## AC -> PA    ARI 0.1797689
-```
-    pre
-true           0           1           2           3
-   0 0.027107438 0.287272727 0.682644628 0.002975207
-   1 0.000349895 0.075227432 0.914975507 0.009447166
-   2 0.008130081 0.003252033 0.175609756 0.813008130
-```
-```{r}
-library(plotly)
-
-plot_ly(type = "sankey", orientation = "h",
-    node = list(
-      label = c("PA_0", "PA_1", "PA_2", "AC_0","AC_1","AC_2","AC_3"), 
-      color = colors_list, pad = 15, thickness = 30,
-      line = list(
-        color = "black",
-        width = 1)),
-    link = list(
-      source = c(0,0,0,0,1,1,1,1,2,2,2,2),
-      target = c(3,4,5,6,3,4,5,6,3,4,5,6),
-      value =  as.numeric(AC_confuse_matrix_test),
-      color = c("#66C2A5","#66C2A5","#66C2A5","#66C2A5","#FC8D62","#FC8D62","#FC8D62",
-                "#FC8D62","#8DA0CB","#8DA0CB","#8DA0CB","#8DA0CB")
-      ))%>% layout(
-    title = "PA -> AC",
-    font = list(size = 10 ))
+PA -> AC
+```{r fig.width=6,fig.height=4}
+sankey_plot(AC_confuse_matrix_test, label1 = c("Fibroblast", "SMC1", "SMC2"), label2 = c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2"), session = "PA -> AC")
 
 umapplot(ds2_AC)
 umapplot(ds2_PA)
-umapplot(ds2,split.by = "conditions")
+# umapplot(ds2,split.by = "conditions")
 ```
+
+
+#把结果投射回umap
+```{r}
+Idents(ds2_AC) <- predict_AC_test
+ds2_AC$predict_AC_test <- predict_AC_test
+umapplot(ds2_AC,group.by = "predict_AC_test")
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
+```
+
+# 反着做
+# 选择特征common genes of top 500
+## 使用所有来自AC的细胞训练分类器
+
+```{r,fig.height=6,fig.width=6}
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- AC_data[selected_features,]
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+colnames(AC_data) <- NULL
+
+AC_train_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label)
+
+AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
+
+xgb_ACram <- list(eta = 0.2, max_depth = 6,
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model2 <- xgb.train(xgb_ACram, AC_train, nrounds = 100, verbose = 0)
+
+# 特征提取
+importance2 <- xgb.importance(colnames(AC_train), model = bst_model2)
+head(importance2)
+xgb.ggplot.importance(head(importance2,20),n_clusters = 1) + theme_bw()+theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+
+write.csv(importance, "./datatable/ACtrain_features.csv", row.names = F)
+multi_featureplot(head(importance2,9)$Feature, ds2_AC)
+
+```
+
+
+## 应用在PA上，计算ARI
+```{r}
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_data <- PA_data[selected_features,]
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+colnames(PA_data) <- NULL
+
+PA_test_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label)
+
+PA_test <- xgb.DMatrix(data = PA_test_data$data,label = PA_test_data$label)
+
+#计算混淆矩阵
+predict_PA_test <- round(predict(bst_model2, newdata = PA_test))
+ 
+PA_confuse_matrix_test <- table(PA_test_data$label, predict_PA_test, dnn=c("true","pre"))
+PA_confuse_matrix_test_prop <- prop.table(PA_confuse_matrix_test,1)
+PA_confuse_matrix_test_prop  #分析发育轨迹
+
+confuse_bubblemat(PA_confuse_matrix_test_prop,c("Fibromyocyte", "SMC1", "SMC2"),c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2"),session = "ACtoPA")
+
+# 计算ARI
+adjustedRandIndex(predict_PA_test, PA_test_data$label)
+```
+## 把结果投射回umap
+```{r}
+Idents(ds2_PA) <- predict_PA_test
+ds2_PA$predict_PA_test <- predict_PA_test
+umapplot(ds2_PA,group.by = "predict_PA_test")
+Idents(ds2_PA) <- ds2_PA$seurat_clusters
+```
+## sankey plot
+```{r}
+labels <- c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2")
+labels2 <- c("Fibromyocyte", "SMC1", "SMC2")
+sankey_plot(PA_confuse_matrix_test,labels,labels2,session = "AC -> PA")
+```
+
 
 # varify 部分
 病变程度量化
 # 数据集CA_dataset1
-## 在dataset2的AC上训练  使用top500 in AC, 7:3分发训练集
+## ds2全体训练
+
 ```{r}
-temp <- get_data_table(ds2_AC, highvar = F, type = "data")
-AC_data <- matrix(data=0, nrow = length(AC_genes$Feature), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(AC_genes$Feature,colnames(temp)))
+Idents(ds2) <- ds2$seurat_clusters
+ds2_data <- get_data_table(ds2, highvar = F, type = "data")
+ds2_label <- as.numeric(as.character(Idents(ds2)))
 
-for(i in intersect(AC_genes$Feature, rownames(temp))){
-  AC_data[i,] <- temp[i,]
-}
-rm(temp)
-AC_label <- as.numeric(as.character(Idents(ds2_AC)))
-set.seed(7)
-index <- c(1:dim(AC_data)[2]) %>% sample(ceiling(0.3*dim(AC_data)[2]), replace = F, prob = NULL)
-colnames(AC_data) <- NULL
+index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
+colnames(ds2_data) <- NULL
 
-AC_train_data <- list(data = t(as(AC_data[,-index],"dgCMatrix")), label = AC_label[-index])
-AC_test_data <- list(data = t(as(AC_data[,index],"dgCMatrix")), label = AC_label[index])
+ds2_train_data <- list(data = t(as(ds2_data[,-index],"dgCMatrix")), label = ds2_label[-index])
+ds2_test_data <- list(data = t(as(ds2_data[,index],"dgCMatrix")), label = ds2_label[index])
 
-AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
-AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
+ds2_train <- xgb.DMatrix(data = ds2_train_data$data,label = ds2_train_data$label)
+ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
 
-watchlist <- list(train = AC_train, eval = AC_test)
+watchlist <- list(train = ds2_train, eval = ds2_test)
 xgb_param <- list(eta = 0.2, max_depth = 6, 
-                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  subsample = 0.6,  num_class = length(table(Idents(ds2))),
                   objective = "multi:softmax", eval_metric = 'mlogloss')
 
-bst_model <- xgb.train(xgb_param, AC_train, nrounds = 200, watchlist, verbose = 0)
+bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
+
+eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
+  add_trace(type = "scatter", mode = "markers+lines", 
+            marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+            line = list(color = "#1E90FF80", width = 2)) %>% 
+  layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
 ```
 
-```{r,fig.width=4,fig.height=4}
+```{r,fig.height=6,fig.width=6}
 # 特征提取
-importance <- xgb.importance(colnames(AC_train), model = bst_model)
+importance <- xgb.importance(colnames(ds2_train), model = bst_model)
 head(importance)
-xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()#这个cluster和分类没有关系
-write.csv(importance, "./datatable/ACmodel_features.csv", row.names = F)
+xgb.ggplot.importance(head(importance,20), n_clusters = 1) + theme_minimal()
 
+multi_featureplot(head(importance,9)$Feature, ds2) 
+ds2_genes <- head(importance, 500) ##选择top500
+
+write.csv(ds2_genes, "./datatable/ds2_features.csv", row.names = F)
+
+
+predict_ds2_test <- round(predict(bst_model, newdata = ds2_test)) %>% 
 #混淆矩阵
-predict_AC_test <- round(predict(bst_model, newdata = AC_test))
+ds2_confuse_matrix_test <- table(ds2_test_data$label, predict_ds2_test, dnn=c("true","pre"))
+ds2_confuse_matrix_test_prop <- prop.table(ds2_confuse_matrix_test, 1)
+ds2_confuse_matrix_test_prop
 
-AC_confuse_matrix_test <- table(AC_test_data$label, predict_AC_test, dnn=c("true","pre"))
-AC_confuse_matrix_test_prop <- prop.table(AC_confuse_matrix_test, 1)
+x <- c(0:4)
+y <- c(0:4)
+confuse_bubblemat(ds2_confuse_matrix_test_prop,x,y,"ds2_train")
 
-x <- c("AC_0", "AC_1", "AC_2", "AC_3")
-y <- c("AC_0", "AC_1", "AC_2", "AC_3")
-prop <- as.numeric(AC_confuse_matrix_test_prop)
-data <- expand.grid(x = x, y = y) %>% bind_cols(prop = prop)
-plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
-  geom_point()+
-  scale_size_continuous(range = c(0, 10)) + 
-  labs(x = NULL, y = NULL) + theme_bw()
 
-ggsave("./plots/ACmodel_train.png", plot = plot, device = png, width = 5,height = 4)
-
-AC_confuse_matrix_test_prop
 #ROC曲线
-xgboost_roc <- pROC::multiclass.roc(AC_test_data$label, predict_AC_test) #多分类ROC
-xgboost_roc[["auc"]]
-
-# 计算ARI 
-adjustedRandIndex(predict_AC_test, AC_test_data$label)
+xgboost_roc <- pROC::multiclass.roc(ds2_test_data$label, predict_ds2_test) #多分类ROC
+xgboost_roc[["auc"]] #只需要这个值
+adjustedRandIndex(ds2_test_data$label, predict_ds2_test) #分类器性能
 ```
 
 
-
 ```{r}
-ds1 <- ds1 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.3)
-umapplot(ds1)
-ds1 <- RenameIdents(ds1,'0' = '0','1' ='0','2'='1','3'='2','4' = '3','5' = '1')
-umapplot(ds1)
-f("LUM",ds1)
-```
-
-```{r}
-temp <- get_data_table(ds1, highvar = F, type = "data")
-ds1_data <- matrix(data=0, nrow = length(AC_genes$Feature), ncol = length(colnames(temp)), byrow = FALSE, dimnames = list(AC_genes$Feature,colnames(temp)))
-for(i in intersect(AC_genes$Feature, rownames(temp))){
+temp <- get_data_table(ds1, highvar = T, type = "data")
+ds1_data <- matrix(data=0, nrow = dim(ds2_data)[1], ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
+for(i in intersect(rownames(ds2_data), rownames(temp))){
   ds1_data[i,] <- temp[i,]
 }
 rm(temp)
@@ -426,24 +402,17 @@ colnames(ds1_data) <- NULL
 ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
 ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
 
-#计算混淆矩阵
+#预测结果
 predict_ds1_test <- round(predict(bst_model, newdata = ds1_test))
 
+#计算混淆矩阵
 ds1_data_confuse_matrix_test <- table(ds1_test_data$label, predict_ds1_test, dnn=c("true","pre"))
 ds1_data_confuse_matrix_test_prop <- prop.table(ds1_data_confuse_matrix_test,1)
 
-x <- c("ds1_0", "ds1_1", "ds1_2", "ds1_3")
-y <- c("AC_0", "AC_1", "AC_2", "AC_3")
-
-prop <- as.numeric(ds1_data_confuse_matrix_test_prop)
-data <- expand.grid(x = x, y = y) %>% bind_cols(prop = prop)
-plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
-  geom_point()+
-  scale_size_continuous(range = c(0, 10)) + 
-  labs(x = "clusters", y = "inferred from") + theme_bw()
-
-ggsave("./plots/ACmodel_dataset1.png", plot = plot, device = png, width = 5,height = 4)
-
+#绘制混淆矩阵
+x <- c("Fibromyocyte", "SMC1", "SMC2")
+y <- c("Fibroblast", "SMC1", "Fibromyocyte", "SMC2")
+confuse_bubblemat(ds1_data_confuse_matrix_test_prop,x,y,"ds2tods1")
 
 ds1_data_confuse_matrix_test
 ds1_data_confuse_matrix_test_prop  #分析发育轨迹
@@ -455,28 +424,15 @@ xgboost_roc[["auc"]]
 adjustedRandIndex(predict_ds1_test, ds1_test_data$label)
 ```
 
+## 投射回umap
 ```{r}
-labels <- lapply(levels(Idents(ds2_AC)), paste0, "_AC") %>% as.character()
-labels2 <- lapply(levels(Idents(ds1)), paste0, "_ds1") %>% as.character()
-sources <- rep(0:(length(labels)-1), each = length(labels2))  #注意这里的each和times的区别
-colors <- rep(colors_list[1:length(labels)], each = length(labels2))
-targets <- rep(length(labels)+0:(length(labels2)-1), times = length(labels))
-
-plot_ly(type = "sankey", orientation = "h",
-    node = list(
-      label = c(labels,labels2), 
-      color = colors_list, pad = 15, thickness = 30,
-      line = list(
-        color = "black",
-        width = 1)),
-    link = list(
-      source = sources,
-      target = targets,
-      value =  as.numeric(ds1_data_confuse_matrix_test),
-      color = colors
-      ))
-#ds1样本最像AC_2的细胞亚群
+Idents(ds1) <- predict_ds1_test
+ds1$predict_ds1_test <- predict_ds1_test
+umapplot(ds1,group.by = "predict_ds1_test")
+Idents(ds1) <- ds1$seurat_clusters
 ```
+
+
 
 
 
@@ -695,6 +651,57 @@ plot_ly(type = "sankey", orientation = "h",
 umapplot(lym_ds2_AC)
 umapplot(lym_ds2_PA)
 ```
+
+
+## functions set
+```{r}
+sankey_plot <- function(confuse_matrix, label1, label2, session = "session")
+{
+  sources <- rep(0:(length(label1)-1), each = length(label2))  #注意这里的each和times的区别
+  colors <- rep(aero_colors_list[1:length(label1)], each = length(label2))
+  targets <- rep(length(label1)+0:(length(label2)-1), times = length(label1))
+
+  plot_ly(type = "sankey", orientation = "h",
+      node = list(
+        label = c(label1,label2), 
+        color = colors_list, pad = 15, thickness = 30,
+        line = list(color = "black", width = 1)),
+      link = list(
+        source = sources, target = targets,
+        value =  as.numeric(confuse_matrix),
+        color = colors
+        )) %>% layout(title=session, font=list(family = "Arial",size = 20, color = 'black'))
+}
+
+
+confuse_bubblemat <- function(confuse_matrix_prop, label1, label2, session = "session")
+{
+prop <- as.numeric(confuse_matrix_prop)
+data <- expand.grid(x = label1, y = label2) %>% bind_cols(prop = prop)
+plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
+  geom_point()+
+  scale_size_continuous(range = c(0, 10)) + 
+  labs(x = "clusters", y = "inferred from") + theme_bw()
+
+ggsave(paste0(session, ".svg"), plot = plot, device = svg, width = 5,height = 4)
+}
+
+## 返回最大的概率对应的index
+func <- function(s, ident)
+{
+  if(max(s)>1.2/length(ident))
+    return(ident[which(s == max(s))])
+  else
+    return("unassigned")
+}
+
+```
+
+```{r}
+aero_colors_list <- as.character(lapply(colors_list, paste0, "A0")) #透明化颜色
+```
+
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

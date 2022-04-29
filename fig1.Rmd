@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("./tianfengRwrappers.R")
+CA_dataset2 <- readRDS("./CA_dataset2.rds")
+```
+
+# umap图
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$conditions
+umap_AC <- umapplot(subset(CA_dataset2, idents = "AC"), group.by = "Classification1")
+umap_PA <- umapplot(subset(CA_dataset2, idents = "PA"), group.by = "Classification1")
+
+ggsave("umap_AC.svg",device = svg,width = 6,height = 4,plot = umap_AC)
+ggsave("umap_PA.svg",device = svg,width = 6,height = 4,plot = umap_PA)
+
+## fig.2
+ggsave("ds2_PAumap.svg",plot = umapplot(ds2_PA),device = svg, width = 6, height = 5)
+ggsave("ds2_ACumap.svg",plot = umapplot(ds2_AC),device = svg, width = 6, height = 5)
+```
+
+# 分裂小提琴图
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$Classification1
+vio <- violin_plot(c("MS4A1","PECAM1","FBLN1","CD68","TPSAB1","STMN1","NKG7","TAGLN","IL7R"),CA_dataset2) + theme( axis.text.y = element_text(size = 12,colour = "black"))
+ggsave("CAdataset2_markers_vio.svg",device = svg, plot = vio,width = 6, height = 6)
+```
+
+
+# 热图
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$Classification1
+CA_dataset2_markers <- FindAllMarkers(CA_dataset2, logfc.threshold = 1, min.diff.pct = 0.3)
+top30genes <- CA_dataset2_markers[CA_dataset2_markers$pct.1>0.7,] %>% group_by(cluster) %>% slice_max(n = 30, order_by = avg_logFC)
+```
+
+```{r,fig.width=6,fig.height=4}
+library(ComplexHeatmap)
+##提取标准化表达矩阵
+mat <- GetAssayData(CA_dataset2, slot = "scale.data")
+
+gene_show <- c("LYZ","CD68","SPP1","PECAM1","VWF","PLVAP","MYL9","TAGLN","ACTA2","DCN","APOD","FBLN1","CD69","CD79A","MS4A1","TPSAB1","TPSB2","NKG7","STMN1","CENPF","CPA3","IL7R","TRAC")
+
+##获得基因和细胞聚类信息
+cluster_info <- sort(CA_dataset2$Classification1)
+condition_info <- sort(CA_dataset2$conditions)
+heatmapgenes <- intersect(top30genes$gene,rownames(mat))
+
+##筛选矩阵
+mat <- as.matrix(mat[heatmapgenes,names(cluster_info)])
+
+#获得基因在热图中的位置信息
+gene_pos <- match(gene_show, rownames(mat))
+row_anno <- rowAnnotation(gene=anno_mark(at=gene_pos,labels = gene_show))
+
+col <- colors_list
+names(col) <- levels(cluster_info)
+top_anno <- HeatmapAnnotation(cluster=anno_block(gp=gpar(fill=col),labels = levels(cluster_info),
+ labels_gp = gpar(cex=1,col='black')))
+
+library(circlize)
+col_fun <-  colorRamp2(c(-2, 1, 4), c("#1E90FF", "white", "#ff2121"))
+
+svg("CA_dataset2_markers.svg",height = 6,width = 10)
+Heatmap(mat, cluster_rows = FALSE, cluster_columns = FALSE, 
+        show_column_names = FALSE, show_row_names = FALSE,
+ column_split = cluster_info, top_annotation = top_anno,  
+ column_title = NULL, right_annotation = row_anno, 
+ heatmap_legend_param = list(
+ title='Expression', title_position='leftcenter-rot'), col = col_fun)
+dev.off()
+```
+
+# 比例
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$conditions
+AC <- subset(CA_dataset2, idents = "AC")
+PA <- subset(CA_dataset2, idents = "PA")
+prop_mat <- cbind(prop.table(table(AC$Classification1)),prop.table(table(PA$Classification1)))
+colnames(prop_mat) <- c("AC","PA")
+
+
+plot_data = melt(prop_mat)
+colnames(plot_data) = c('cell type','position','proportion')#修改每一列的名称
+
+ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "dodge", width=0.5) + theme_bw()
+
+prop_plot <- ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "stack", width=0.5) + coord_cartesian(ylim = c(0,0.5))+
+  theme_bw() + scale_y_continuous(expand = c(0,0)) + theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+
+ggsave("CAdataset2_prop.svg",device = svg, plot = prop_plot,width = 8,height = 6)
+
+```
+
+
+# 气泡图
+
+
+
+# 雷达图
+```{r}
+library(fmsb)
+
+data=as.data.frame(matrix(sample(0:50, 18,replace=T) , ncol=6))
+colnames(data)=c('IL-1 signaling pathway','Response to IFNa','NFkB signaling pathway','IL-6 signaling pathway', 'Muscle contraction','Response to IFNr')
+rownames(data) <- c('Monocyte','Neutrophil','Macrophage')
+# 用于生成雷达图的最大最小值
+data=rbind(rep(50,5) , rep(0,5) , data)
+
+colors_list[1:3]
+colors_border <- c("#6dc0a6", "#e2b398", "#e2a2ca")
+colors_in <- c("#6dc0a64a", "#e2b3984a", "#e2a2ca4a")
+radarchart( data , axistype=0,
+ pcol=colors_border , pfcol=colors_in , plwd=1.3 , plty=1,pty=32,
+ cglcol="black", cglty=3, cglwd=0.6,
+)
+legend(x=1.5, y=1, legend = rownames(data[-c(1,2),]), bty = "n", pch=20 , col=colors_border, text.col = "black", cex=1, pt.cex=2)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

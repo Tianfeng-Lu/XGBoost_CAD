@@ -1,0 +1,72 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("tianfengRwrappers.R")
+ds2 <- readRDS("ds2.rds")
+selected_features <- read.csv("./datatable/ds2_features.csv", stringsAsFactors = F)
+selected_features <- selected_features$Feature
+Idents(ds2) <- ds2$seurat_clusters
+ggobj <- multi_featureplot(selected_features[1:9], ds2, labels = NULL)
+ggsave("ds2_features.png", device = png, height = 8, width = 8, plot = ggobj)
+```
+## 病变亚群的识别
+
+```{r}
+sep = 0.4 #LUM的表达模式
+surfaceplot("LUM", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = -0.5)%>%
+  layout(yaxis = list(range=list(17,2)))
+
+    embedding <- FetchData(object = ds2, vars = c("UMAP_1", "UMAP_2","seurat_clusters", "LUM"))
+    colnames(embedding) <- c("UMAP_1", "UMAP_2", "seurat_clusters","feature")
+    
+    sep = 0.3
+ surfaceplot("LUM", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = 0) %>%
+   layout(scene = list(xaxis = list(title = 'x',
+                      showgrid = F, range = list(-2,13),
+                      zerolinecolor = '#FFFFFF00'),yaxis = list(title = 'y',
+                      showgrid = F,range = list(2,17),
+                      zerolinecolor = '#FFFFFF00'),zaxis = list(title = 'z',
+                      showgrid = F,
+                      zerolinecolor = '#FFFFFF00'),
+                      camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)))) %>%
+    add_trace(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 4, type = "scatter3d",
+              inherit = F, split = embedding$seurat_clusters,  mode = "markers", 
+              marker = list(symbol = 'circle', opacity = 0.2, size = 1.5,
+                            line = list(color = '#FFFFFF00', width = 1)))
+
+ plot_ly(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 0, type = "scatter3d", size = 0.2, alpha = 1,color = embedding$seurat_clusters,colors = c("#6dc0a6", "#e2b398", "#e2a2ca", "#d1eba8", "#b1d6fb"), mode = "markers") %>%
+   layout(scene = list(xaxis = list(title = 'x',
+                      showgrid = F, range = list(-2,13),
+                      zerolinecolor = '#FFFFFF'),yaxis = list(title = '',
+                      showgrid = F,range = list(2,17),
+                      zerolinecolor = '#FFFFFF'),zaxis = list(title = '',
+                      showgrid = F,
+                      zerolinecolor = '#FFFFFF'),
+      camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)) ))
+
+pal <- c("red", "green", "blue", "goldenrod", "magenta")
+pal <- setNames(pal, c("0", "1", "2", "3", "4"))
+
+```
+
+```{r}
+dd <- umapplot(ds2,label = F)+scale_y_continuous(limits = c(2,17), breaks = NULL) +
+        scale_x_continuous(limits = c(-2,13), breaks = NULL)+ 
+  guides(colour = guide_legend(override.aes = list(size = 5))) +
+        theme(axis.line = element_blank())
+ggsave("dd.png",device = png,height = 4,width = 6,plot= dd, bg = "transparent")
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

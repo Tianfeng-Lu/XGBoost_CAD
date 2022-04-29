@@ -67,3 +67,6 @@ CA_*/
 Coronary_snATAC-main
 datatable/
 plots/
+*.png
+*.csv
+*.svg
