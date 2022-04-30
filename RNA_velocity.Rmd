@@ -17,14 +17,14 @@ source("tianfengRwrappers.R")
 
 ```{r}
 #首先需要取并集，然后使用已有的umap，在其上绘制速率图
-# velodata1 <- ReadVelocity(file ="./velo_data/CARconHEL.loom")
-# velodata2 <- ReadVelocity(file ="./velo_data/CARconHEA0620.loom")
-# velodata3 <- ReadVelocity(file ="./velo_data/CARconHEA0717.loom")
+velodata1 <- ReadVelocity(file ="./velo_data/CARconHEL.loom")
+velodata2 <- ReadVelocity(file ="./velo_data/CARconHEA0620.loom")
+velodata3 <- ReadVelocity(file ="./velo_data/CARconHEA0717.loom")
 
 #PA
-velodata1 <- ReadVelocity(file ="./velo_data/CARconDIS.loom")
-velodata2 <- ReadVelocity(file ="./velo_data/CARconDIS0620.loom")
-velodata3 <- ReadVelocity(file ="./velo_data/CARconDIS0717.loom")
+# velodata1 <- ReadVelocity(file ="./velo_data/CARconDIS.loom")
+# velodata2 <- ReadVelocity(file ="./velo_data/CARconDIS0620.loom")
+# velodata3 <- ReadVelocity(file ="./velo_data/CARconDIS0717.loom")
 ```
 
 
@@ -34,7 +34,7 @@ func <- function(s)
 {
   s <- strsplit(s,".*:",fixed = F)[[1]][2]
   s <- strsplit(s,"x",fixed = T)[[1]]
-  s <- paste(s,"2",sep = "-")
+  s <- paste(s,"1",sep = "-")
   return(s)
 }
 
@@ -47,7 +47,7 @@ func <- function(s)
 {
   s <- strsplit(s,".*:",fixed = F)[[1]][2]
   s <- strsplit(s,"x",fixed = T)[[1]]
-  s <- paste(s,"4",sep = "-")
+  s <- paste(s,"3",sep = "-")
   return(s)
 }
 
@@ -60,7 +60,7 @@ func <- function(s)
 {
   s <- strsplit(s,".*:",fixed = F)[[1]][2]
   s <- strsplit(s,"x",fixed = T)[[1]]
-  s <- paste(s,"6",sep = "-")
+  s <- paste(s,"5",sep = "-")
   return(s)
 }
 
@@ -71,12 +71,13 @@ velodata3[["ambiguous"]]@Dimnames[[2]] = as.character(lapply(velodata3[["ambiguo
 
 
 ```{r}
-CA_dataset2 <- readRDS("CA_dataset2.rds")
+# CA_dataset2 <- readRDS("CA_dataset2.rds")
+ds2_AC <- readRDS("ds2_AC.rds")
 sp1_velo <- as.Seurat(x = velodata1)
 sp2_velo <- as.Seurat(x = velodata2)
 sp3_velo <- as.Seurat(x = velodata3)
 merge_velo <- merge(sp1_velo, c(sp2_velo,sp3_velo))
-merge_velo <- subset(merge_velo, cells = WhichCells(CA_dataset2))
+merge_velo <- subset(merge_velo, cells = WhichCells(ds2_AC))
 rm(sp1_velo)
 rm(sp2_velo)
 rm(sp3_velo)
@@ -99,11 +100,13 @@ VlnPlot(merge_velo, features = c("nFeature_spliced", "nCount_spliced"), ncol = 2
 
 DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
 
-merge_velo@reductions[["umap"]] <- CA_dataset2@reductions[["umap"]]
-merge_velo@reductions[["umap"]]@cell.embeddings <-  CA_dataset2@reductions[["umap"]]@cell.embeddings[colnames(merge_velo),]
+merge_velo@reductions[["umap"]] <- ds2_AC@reductions[["umap"]]
+merge_velo@reductions[["umap"]]@cell.embeddings <-  ds2_AC@reductions[["umap"]]@cell.embeddings[colnames(merge_velo),]
 
 DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
-
+merge_velo$Classification1 <- Idents(ds2_AC)
+Idents(merge_velo) <- merge_velo$Classification1
+merge_velo@assays[["RNA"]] <- ds2_AC@assays[["RNA"]]
 
 f("CNN1",merge_velo)
 f("CNN1",CA_dataset2)
@@ -164,7 +167,7 @@ source("../vascular-analysis/seuratToAnnDataCombined.R")
 ```
 
 ```{r}
-h5ad_output <- "PA_merge_velo.h5ad"  
+h5ad_output <- "AC_SMC_velo.h5ad"  
 
 library(reticulate)
 library(Matrix)

@@ -66,12 +66,13 @@ velodata3[["ambiguous"]]@Dimnames[[2]] = as.character(lapply(velodata3[["ambiguo
 
 
 ```{r}
-CA_dataset1 <- readRDS("CA_dataset1.rds")
+# CA_dataset1 <- readRDS("CA_dataset1.rds"
+ds1 <- readRDS("ds1.rds")
 sp1_velo <- as.Seurat(x = velodata1)
 sp2_velo <- as.Seurat(x = velodata2)
 sp3_velo <- as.Seurat(x = velodata3)
 merge_velo <- merge(sp1_velo, c(sp2_velo,sp3_velo))
-merge_velo <- subset(merge_velo, cells = WhichCells(CA_dataset1))
+merge_velo <- subset(merge_velo, cells = WhichCells(ds1))
 rm(sp1_velo)
 rm(sp2_velo)
 rm(sp3_velo)
@@ -94,14 +95,15 @@ VlnPlot(merge_velo, features = c("nFeature_spliced", "nCount_spliced"), ncol = 2
 
 DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
 
-merge_velo@reductions[["umap"]] <- CA_dataset1@reductions[["umap"]]
-merge_velo@reductions[["umap"]]@cell.embeddings <-  CA_dataset1@reductions[["umap"]]@cell.embeddings[colnames(merge_velo),]
-
+merge_velo@reductions[["umap"]] <- ds1@reductions[["umap"]]
+merge_velo@reductions[["umap"]]@cell.embeddings <-ds1@reductions[["umap"]]@cell.embeddings[colnames(merge_velo),]
+merge_velo$Classification1 <- Idents(ds1)
+Idents(merge_velo) <- merge_velo$Classification1
 DimPlot(merge_velo, reduction = "umap",pt.size = 0.5,label = T)
 
-umapplot(CA_dataset1)
+umapplot(ds1)
 f("LUM",merge_velo)
-f("CNN1",CA_dataset1)
+f("CNN1",ds1)
 
 ```
 
@@ -112,14 +114,14 @@ saveRDS(merge_velo,"dataset1_velo.RDS")
 
 
 ```{r}
-merge_velo <- readRDS("dataset1_velo.RDS")
 merge_velo <- RunVelocity(object = merge_velo, deltaT = 1, kCells = 25, fit.quantile = 0.02, ncores = 3) # fitting gamma coefficients 用时长
 ```
 
 
 ```{r}
-# saveRDS(merge_velo,"dataset2_AC_velo.RDS")
-# merge_velo <- readRDS("dataset2_AC_velo.RDS")
+merge_velo <- readRDS("dataset2_AC_velo.RDS")
+
+
 ident.colors <- colors_list[1:length(x = levels(x = merge_velo))]
 names(x = ident.colors) <- levels(x = merge_velo)
 cell.colors <- ident.colors[Idents(object = merge_velo)]
@@ -140,19 +142,19 @@ source("../vascular-analysis/seuratToAnnDataCombined.R")
 ```
 
 ```{r}
-h5ad_output <- "PA_merge_velo.h5ad"  
+h5ad_output <- "dataset1_SMC_velo.h5ad"  
 
 library(reticulate)
 library(Matrix)
-writeMM(t(merge_velo@assays$RNA@counts), file='combined.mtx')
+writeMM(t(merge_velo@assays$SCT@counts), file='combined.mtx')
 writeMM(t(merge_velo@assays$spliced@counts), file='spliced.mtx')
 writeMM(t(merge_velo@assays$unspliced@counts), file='unspliced.mtx')
 write.csv(rownames(merge_velo@assays$spliced@counts), file = "genes.csv", row.names = FALSE)
 write.csv(merge_velo@reductions$umap@cell.embeddings, file = "umap.csv", row.names = FALSE)
 write.csv(merge_velo@reductions$pca@cell.embeddings, file = "pca.csv", row.names = FALSE)
-
 write.csv(colnames(merge_velo@assays$spliced@counts), file = "cells.csv", row.names = FALSE)
 write.csv(merge_velo@meta.data, file = "meta.csv", row.names = FALSE)
+
 source_python('~/scRNAseq/vascular-analysis/build.py')
 build(h5ad_output, pca = TRUE, umap = TRUE)
 file.remove('combined.mtx')
