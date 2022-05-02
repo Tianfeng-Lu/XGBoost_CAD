@@ -19,12 +19,11 @@ ggsave("ds2_features.png", device = png, height = 8, width = 8, plot = ggobj)
 ## 病变亚群的识别
 
 ```{r}
+embedding <- FetchData(object = ds2, vars = c("UMAP_1", "UMAP_2","seurat_clusters"))
+colnames(embedding) <- c("UMAP_1", "UMAP_2", "seurat_clusters")
 
-    embedding <- FetchData(object = ds2, vars = c("UMAP_1", "UMAP_2","seurat_clusters", "ACTA2"))
-    colnames(embedding) <- c("UMAP_1", "UMAP_2", "seurat_clusters","feature")
-    
-    sep = 0.3
- surfaceplot("ACTA2", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = 0) %>%
+sep = 0.3
+surfaceplot("ACTA2", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = 0) %>%
    layout(scene = list(xaxis = list(title = 'x',
                       showgrid = F, range = list(-2,13),
                       zerolinecolor = '#FFFFFF00'),yaxis = list(title = 'y',
@@ -37,21 +36,40 @@ ggsave("ds2_features.png", device = png, height = 8, width = 8, plot = ggobj)
               inherit = F, split = embedding$seurat_clusters,  mode = "markers", 
               marker = list(symbol = 'circle', opacity = 0.2, size = 1.5,
                             line = list(color = '#FFFFFF00', width = 1)))
-
- plot_ly(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 0, type = "scatter3d", size = 0.2, alpha = 1,color = embedding$seurat_clusters,colors = c("#6dc0a6", "#e2b398", "#e2a2ca", "#d1eba8", "#b1d6fb"), mode = "markers") %>%
-   layout(scene = list(xaxis = list(title = 'x',
-                      showgrid = F, range = list(-2,13),
-                      zerolinecolor = '#FFFFFF'),yaxis = list(title = '',
-                      showgrid = F,range = list(2,17),
-                      zerolinecolor = '#FFFFFF'),zaxis = list(title = '',
-                      showgrid = F,
-                      zerolinecolor = '#FFFFFF'),
-      camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)) ))
-
-pal <- c("red", "green", "blue", "goldenrod", "magenta")
-pal <- setNames(pal, c("0", "1", "2", "3", "4"))
+# 
+#  plot_ly(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 0, type = "scatter3d", size = 0.2, alpha = 1,color = embedding$seurat_clusters,colors = c("#6dc0a6", "#e2b398", "#e2a2ca", "#d1eba8", "#b1d6fb"), mode = "markers") %>%
+#    layout(scene = list(xaxis = list(title = 'x',
+#                       showgrid = F, range = list(-2,13),
+#                       zerolinecolor = '#FFFFFF'),yaxis = list(title = '',
+#                       showgrid = F,range = list(2,17),
+#                       zerolinecolor = '#FFFFFF'),zaxis = list(title = '',
+#                       showgrid = F,
+#                       zerolinecolor = '#FFFFFF'),
+#       camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)) ))
+# 
+# pal <- c("red", "green", "blue", "goldenrod", "magenta")
+# pal <- setNames(pal, c("0", "1", "2", "3", "4"))
 
 ```
+
+# LUM
+```{r}
+sep = 0.3
+surfaceplot2("LUM",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
+```
+
+```{r}
+surfaceplot2("ACTA2",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
+```
+
+```{r}
+surfaceplot2("FB_score1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep),z_height = 2)
+```
+
+```{r}
+surfaceplot2("SMC_score1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep),z_height = 2)
+```
+
 
 ```{r}
 dd <- umapplot(ds2,label = F)+scale_y_continuous(limits = c(2,17), breaks = NULL) +
@@ -61,6 +79,21 @@ dd <- umapplot(ds2,label = F)+scale_y_continuous(limits = c(2,17), breaks = NULL
 ggsave("dd.png",device = png,height = 4,width = 6,plot= dd, bg = "transparent")
 
 ```
+
+#  addmodulescore
+```{r}
+geneset <- read.table("SMC")
+ds2 <- AddModuleScore(ds2,features = geneset, name = 'SMC_score')
+f("SMC_score1", ds2, min.cutoff = 0)
+# dataset1 <- AddModuleScore_UCell(dataset1,features = geneset, name = 'fibromyo_score')
+# f("V1fibromyo_score", dataset1)
+
+geneset <- read.table("FB")
+ds2 <- AddModuleScore(ds2,features = geneset, name = 'FB_score')
+f("FB_score1", ds2, min.cutoff = 0)
+
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

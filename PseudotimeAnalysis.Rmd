@@ -53,8 +53,13 @@ plot_cells(cds, genes=c("DCN", "CNN1"),show_trajectory_graph = F)
 
 cds <- order_cells(cds)
 
-plot_cells(cds,color_cells_by="pseudotime", cell_size=1, label_roots = T, label_leaves = T)
-    ```
+ggobj <- plot_cells(cds,color_cells_by="pseudotime", cell_size=1, label_roots = F, label_leaves = F,show_trajectory_graph = F) + theme(
+        axis.line = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(),
+        axis.title = element_blank()) + scale_color_gradient(low = "deeppink", high =  "#1E90FF") #改一下图例   
+ggsave("pseudotime.png", device = png, plot = ggobj, width = 7, height = 6)
+
+```
 
 #identify genes differentially regulated in pseudotime
 ```{r}
@@ -133,131 +138,7 @@ saveRDS(ds2,file = "ds2_pt.rds")
 
 FeaturePlot(ds2, reduction = "umap", features = "pseudotime",label = T)
 ```
-head 5
-AAACCCAAGGGCAGGA-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                           2251    4      17.778129 
-AAACCCACACGACGTC-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                            4072    7     20.802009 
-AAACCCAGTGAGATTA-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                             4965    9    23.269305 
-AAACCCATCGGTCTAA-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                             479   0      3.415503 
-AAACGAACATCGCTGG-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                              5082    9   23.646496 
-AAACGAATCTAGTCAG-6e574292__FCA58_Female_TracheaGFP_adult_5dWT_Kornberg_sample1 
-                                                            3859    7     20.678411 
-                                                                     
-                                                                     
-#作图
-```{r import,fig.height=6, fig.width=8}
-library(reshape2)
-library(ggplot2)
-library(ggridges) 
-library(viridis)
-library(hrbrthemes)
-```
 
-
-
-```{r functionset}
-#R的排序函数 order(), sort, rank()
-#根据每个细胞的pseudotime值分成若干bins
-
-make_bins <- function(cell.subset, nbins = 11)  
-{
-  ordered.cells <- BiocGenerics::rank(cell.subset$pseudotime)
-  bins <- c()
-  len <- length(cell.subset$pseudotime)
-  for (i in c(1:len)) {
-    bins[i] <- floor(ordered.cells[i]*nbins/len)  #创建一个长度为细胞数量的向量，存储每个细胞分别属于的拟时bin信息
-  }
-  Idents(cell.subset) <- as.factor(bins)
-  cell.subset$bins <- bins
-  return(cell.subset)
-}
-
-
-make_pseudotime_heatmap_bycells <- function(cell.subset,top_specific_marker_ids, topn_markers = 40){
-  
-  #根据细胞画图
-  DoHeatmap(cell.subset, features = head(top_specific_marker_ids,topn_markers),group.by = "bins")
-}
-
-#根据组平均画图
-#提取表达矩阵
-make_pseudotime_heatmap_average <- function(cell.subset,top_specific_marker_ids, topn_markers = 40)
-{
-  mat <- c()
-  #上述方法分出来的bins是从0开始的
-  for(j in c(0:(nbins-1)))
-  {
-    temp <- as.matrix(GetAssayData(cell.subset,slot = "scale.data")[,WhichCells(cell.subset,idents = c(j))])
-    mat <- cbind(mat,apply(temp,1,mean))
-  }
-  colnames(mat) <- as.factor(c(0:(nbins-1)))
-  
-  pheatmap::pheatmap(mat[head(top_specific_marker_ids,topn_markers),],cluster_cols=FALSE)
-  
-  draw <- CreateSeuratObject(mat)
-  #注意，R中的因子默认是ACSII编码顺序排序
-  Idents(draw) <- c(0:(nbins-1))
-  draw <- SetAssayData(draw,slot = "scale.data",as.matrix(GetAssayData(draw,slot = "data")))
-  DoHeatmap(subset(draw,idents = c(0:(nbins-1))), 
-            features = head(top_specific_marker_ids,topn_markers),draw.lines = F)
-}
-
-
-#绘制ridgeline plot
-#首先设置阈值来二值化对特定基因在每个细胞中是否表达
-#然后观察表达这个基因的细胞的拟时值分布
-
-get_draw <- function(seuobj, genelist, expr_threshold = 3){
-  scale_data <- seuobj@assays[["RNA"]]@scale.data
-  df <- c()
-  df$pseudotime <- NULL
-  df$gene <- NULL
-  for (gene in genelist){
-    candidate <- rownames(as.data.frame(scale_data[gene,][scale_data[gene,]>expr_threshold]))
-    temp <- as.data.frame(pseudotime[candidate])
-    colnames(temp) <- "pseudotime"
-    rownames(temp) <- NULL
-    temp$gene <- gene
-    df <- rbind(df,temp)
-  }
-  return(df)
-}
-```
-
-```{r PseudotimeAnalysis, fig.height=6, fig.width=8}
-#选取细胞亚群进行分析
-cell.subset <- subset(x = ds2,idents = c("DT","SB"),invert = FALSE )
-nbins <-  15
-cell.subset <- make_bins(cell.subset,nbins)
-
-make_pseudotime_heatmap_bycells(cell.subset,top_specific_marker_ids,50)
-make_pseudotime_heatmap_average(cell.subset,top_specific_marker_ids,50)
-
-df <- get_draw(ds2, genelist = c("Tom","bs"), expr_threshold = 3)
-
-ggplot(df, aes(x = pseudotime , y = gene , fill = gene)) +
- ggridges::geom_density_ridges(alpha = 0.5,show.legend =T) + labs(title = 'DEGs with pseudotime')+
- theme_ipsum() +  theme(legend.position="none", panel.spacing = unit(0.1, "lines"), strip.text.x = element_text(size = 8))
-
-ggplot(df, aes(x = pseudotime , y = gene , fill = ..x..))  +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01,alpha = 0.5) +
-  scale_fill_viridis(name = pseudotime, option = "C") +
-  labs(title = 'DEGs with pseudotime') +
-  theme_ipsum() +
-    theme(
-      legend.position="none",
-      panel.spacing = unit(0.1, "lines"),
-      strip.text.x = element_text(size = 8)
-    )
-
-#FeaturePlot(ds2,features = "bs")
-plot_genes_in_pseudotime(cds[head(top_specific_marker_ids),], color_cells_by="seurat_clusters",
-                              min_expr=NULL, ncol = 2)
-```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

@@ -1,0 +1,165 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("tianfengRwrappers.R")
+library(future)
+plan("multiprocess",workers = 8)
+```
+
+```{r}
+CA_dataset2 <- readRDS("CA_dataset2.rds")
+CA_dataset1 <- readRDS("CA_dataset1.rds")
+human_coronary <- readRDS("human_coronary.rds")
+Idents(human_coronary) <- human_coronary$samples
+human_coronary <- RenameIdents(human_coronary,'1' = 'sample1','2' = 'sample2','3' = 'sample3','4' = 'sample4')
+human_coronary$samples <- Idents(human_coronary)
+Idents(human_coronary) <- human_coronary$Classification1
+ds2 <- readRDS("ds2.rds")
+```
+
+#sample info
+```{r}
+ggsave("dataset2_sampleinfo.svg",plot = umapplot(CA_dataset2, split.by = "sample"), 
+       device = svg, width = 25, height = 5)
+ggsave("dataset1_sampleinfo.svg",plot = umapplot(CA_dataset1, split.by = "orig.ident"),
+       device = svg, width = 15, height = 5)
+ggsave("dataset0_sampleinfo.svg",plot = umapplot(human_coronary, split.by = "samples"),
+       device = svg, width = 20, height = 5)
+
+```
+
+
+# 附图：所有marker基因表达热图 show 表达量最高的top5
+### logfc.threshold = 0.5, min.diff.pct = 0.3 pct.1>0.7
+dataset2
+```{r}
+CA_dataset2_markers <- FindAllMarkers(CA_dataset2, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
+CA_dataset2_markers <- CA_dataset2_markers[CA_dataset2_markers$pct.1>0.7,] %>% group_by(cluster) 
+
+genes_to_show <- CA_dataset2_markers %>% group_by(cluster) %>% slice_max(n = 5, order_by = avg_logFC)
+
+svg(paste0("CA_dataset2_supp","_markers.svg"), height = 10, width = 15)
+dhm2(CA_dataset2_markers$gene, CA_dataset2, genes_to_show$gene,"CA_dataset2_supp")
+dev.off()
+```
+dataset1
+```{r}
+CA_dataset1_markers <- FindAllMarkers(CA_dataset1, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
+CA_dataset1_markers <- CA_dataset1_markers[CA_dataset1_markers$pct.1>0.7,] %>% group_by(cluster) 
+
+genes_to_show <- CA_dataset1_markers %>% group_by(cluster) %>% slice_max(n = 5, order_by = avg_logFC)
+
+svg(paste0("CA_dataset1_supp","_markers.svg"), height = 10, width = 15)
+dhm2(CA_dataset1_markers$gene, CA_dataset1, genes_to_show$gene,"CA_dataset1_supp")
+dev.off()
+```
+
+
+dataset0
+```{r}
+human_coronary_markers <- FindAllMarkers(human_coronary, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
+human_coronary_markers <- human_coronary_markers[human_coronary_markers$pct.1>0.7,] %>% group_by(cluster) 
+
+genes_to_show <- human_coronary_markers %>% group_by(cluster) %>% slice_max(n = 5, order_by = avg_logFC)
+
+svg(paste0("human_coronary_supp","_markers.svg"), height = 10, width = 15)
+dhm2(human_coronary_markers$gene, human_coronary, genes_to_show$gene,"human_coronary_supp")
+dev.off()
+```
+# 样本细胞比例
+```{r}
+Idents(human_coronary) <- human_coronary$conditions
+sp1 <- subset(human_coronary, idents = "sample1")
+sp2 <- subset(human_coronary, idents = "sample2")
+sp3 <- subset(human_coronary, idents = "sample3")
+sp4 <- subset(human_coronary, idents = "sample4")
+prop_mat <- cbind(prop.table(table(sp1$Classification1)),prop.table(table(sp2$Classification1)))
+prop_mat2 <- cbind(prop.table(table(sp3$Classification1)),prop.table(table(sp4$Classification1)))
+prop_mat <- cbind(prop_mat, prop_mat2)
+colnames(prop_mat) <- levels(Idents(human_coronary))
+
+
+plot_data = melt(prop_mat)
+colnames(plot_data) = c('cell type','position','proportion')#修改每一列的名称
+
+ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "dodge", width=0.5) + theme_bw()
+
+prop_plot <- ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "dodge", width=0.7) + coord_cartesian(ylim = c(0,0.3))+
+  theme_bw() + scale_y_continuous(expand = c(0,0)) + scale_fill_manual(values = colors_list[3:6]) +theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 15, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 15, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+
+ggsave("human_coronary_prop.svg", device = svg, plot = prop_plot, width = 12, height = 6)
+
+```
+
+
+```{r}
+Idents(CA_dataset1) <- CA_dataset1$orig.ident
+Idents(CA_dataset1) <- c("sample1","sample2","sample3")
+
+sp1 <- subset(CA_dataset1, idents = "sample1")
+sp2 <- subset(CA_dataset1, idents = "sample2")
+sp3 <- subset(CA_dataset1, idents = "sample3")
+prop_mat <- cbind(prop.table(table(sp1$Classification1)),prop.table(table(sp2$Classification1)),prop.table(table(sp3$Classification1)))
+
+colnames(prop_mat) <- levels(Idents(CA_dataset1))
+
+
+plot_data = melt(prop_mat)
+colnames(plot_data) = c('cell type','position','proportion')#修改每一列的名称
+
+ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "dodge", width=0.5) + theme_bw()
+
+prop_plot <- ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+  geom_bar(stat = 'identity', position = "dodge", width=0.7) + coord_cartesian(ylim = c(0,0.6))+
+  theme_bw() + scale_y_continuous(expand = c(0,0)) + scale_fill_manual(values = colors_list[3:6]) +theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 15, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 15, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+
+ggsave("CA_dataset1_prop.svg", device = svg, plot = prop_plot, width = 12, height = 6)
+```
+
+
+## XGBoost feature
+pretrain
+```{r fig.width=6,fig.height=6}
+fea <- read.csv("./datatable/AC_features.csv")
+ggobj <- multi_featureplot(fea$Feature[1:16],ds2_AC,labels = "",label = F)
+ggsave("ACpretrain_features.png", device = png, plot = ggobj, width = 8, height = 8)
+
+fea <- read.csv("./datatable/PA_features.csv")
+ggobj <- multi_featureplot(fea$Feature[1:16],ds2_PA,labels = "",label = F)
+ggsave("PApretrain_features.png", device = png, plot = ggobj, width = 8, height = 8)
+```
+
+model
+```{r fig.width=6,fig.height=6}
+fea <- read.csv("./datatable/ACtrain_features.csv")
+ggobj <- multi_featureplot(fea$Feature[1:16],ds2_AC,labels = "",label = F)
+ggsave("ACmodel_features.png", device = png, plot = ggobj, width = 8, height = 8)
+
+fea <- read.csv("./datatable/PAtrain_features.csv")
+ggobj <- multi_featureplot(fea$Feature[1:16],ds2_PA,labels = "",label = F)
+ggsave("PAmodel_features.png", device = png, plot = ggobj, width = 8, height = 8)
+```
+
+
+    
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

@@ -44,8 +44,14 @@ umapplot(ds2_PA)
 
 ds2_AC$Classification <- Idents(ds2_AC)
 Idents(ds2_AC) <- ds2_AC$seurat_clusters
+ds2_AC <- RenameIdents(ds2_AC,'0' = '3','1' = '1','2' = '0','3' = '2')
+Idents(ds2_AC) <- factor(Idents(ds2_AC),levels = c(0,1,2,3))
+ds2_AC$seurat_clusters <- Idents(ds2_AC)
+
 ds2_PA$Classification <- Idents(ds2_PA)
 Idents(ds2_PA) <- ds2_PA$seurat_clusters
+
+
 ```
 
 
@@ -281,7 +287,7 @@ xgb.ggplot.importance(head(importance2,20),n_clusters = 1) + theme_bw()+theme(
     axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
     legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
 
-write.csv(importance, "./datatable/ACtrain_features.csv", row.names = F)
+write.csv(importance2, "./datatable/ACtrain_features.csv", row.names = F)
 multi_featureplot(head(importance2,9)$Feature, ds2_AC)
 
 ```
@@ -530,6 +536,7 @@ umapplot(ds0)
 
 ```{r}
 lym_ds2 <- subset(CA_dataset2, idents = c('0','4','9'))
+lym_ds2 <- readRDS("lym_ds2.rds")
 Idents(lym_ds2) <- lym_ds2$conditions
 lym_ds2_AC <- subset(lym_ds2, idents = "AC")
 lym_ds2_PA <- subset(lym_ds2, idents = "PA")
@@ -537,6 +544,9 @@ lym_ds2_AC <- lym_ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolut
 umapplot(lym_ds2_AC)
 lym_ds2_PA <- lym_ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
 umapplot(lym_ds2_PA)
+
+ggsave("./supp/lym_ds2_PA.svg", plot = umapplot(lym_ds2_PA), device = svg, width = 7, height =6)
+ggsave("./supp/lym_ds2_AC.svg", plot = umapplot(lym_ds2_AC), device = svg, width = 7, height =6)
 ```
 
 ## 用PA的lym训练
@@ -558,17 +568,21 @@ xgb_param <- list(eta = 0.2, max_depth = 6,
                   subsample = 0.6,  num_class = length(table(Idents(lym_ds2_PA))),
                   objective = "multi:softmax", eval_metric = 'mlogloss')
 
-bst_model <- xgb.train(xgb_param, lym_PA_train, nrounds = 200, watchlist, verbose = 1)
+bst_model <- xgb.train(xgb_param, lym_PA_train, nrounds = 100, watchlist, verbose = 0)
 ```
 
 
-```{r}
+```{r fig.height=6,fig.width=6}
 # 特征提取
 importance <- xgb.importance(colnames(lym_PA_train), model = bst_model)
 head(importance)
-xgb.ggplot.importance(head(importance,20),n_clusters = 1)+theme_bw() #这个cluster和分类没有关系
-lym_PA_genes <- head(importance, 500) ##选择top500
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()+theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
 
+lym_PA_genes <- head(importance, 500) ##选择top500
+multi_featureplot(lym_PA_genes$Feature[1:9],lym_ds2_PA,labels = "")
 write.csv(lym_PA_genes,"./datatable/lym_PA_features.csv", row.names = F)
 #混淆矩阵
 predict_lym_PA_test <- round(predict(bst_model, newdata = lym_PA_test))
@@ -594,15 +608,10 @@ ggsave("./plots/PAlymmodel.png", plot = plot, device = png, width = 7,height =6)
 ```{r}
 lym_AC_data <- get_data_table(lym_ds2_AC, highvar = F, type = "data")
 lym_AC_label <- as.numeric(as.character(Idents(lym_ds2_AC)))
-
 colnames(lym_AC_data) <- NULL
-
 lym_AC_test_data <- list(data = t(as(lym_AC_data,"dgCMatrix")), label = lym_AC_label)
-
 lym_AC_test <- xgb.DMatrix(data = lym_AC_test_data$data,label = lym_AC_test_data$label)
-# multi_featureplot(head(importance,9)$Feature,lym_ds2_AC)
 
-#混淆矩阵
 predict_lym_AC_test <- round(predict(bst_model, newdata = lym_AC_test))
 
 lym_AC_confuse_matrix_test <- table(lym_AC_test_data$label, predict_lym_AC_test, dnn=c("true","pre"))
@@ -619,10 +628,13 @@ plot <- ggplot(data, aes(x = x, y = y, colour = prop, size = prop)) +
   geom_point()+
   scale_size_continuous(range = c(0, 10)) + 
   labs(x = "clusters", y = "inferred from") + theme_bw()
-ggsave("./plots/PAlymmodel_AC.png", plot = plot, device = png, width = 7,height =6)
+ggsave("./plots/PAlymmodel_AC.png", plot = plot, device = png, width = 7,height = 6)
+
 xgboost_roc[["auc"]]
 adjustedRandIndex(predict_lym_AC_test, lym_AC_test_data$label)
 lym_AC_confuse_matrix_test_prop
+
+sankey_plot(lym_AC_confuse_matrix_test,session = "PAtoAC_lym")
 ```
 
 

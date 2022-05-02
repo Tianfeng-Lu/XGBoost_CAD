@@ -143,14 +143,11 @@ umapplot(PA_dataset2)
 cl4_marker <- FindMarkers(ds2,ident.1 = 4,logfc.threshold = 0.5, min.diff.pct = 0.3)
 umapplot(ds2)
 ```
+
 ```{r}
 write.csv(cl4_marker,"cl4_marker.csv",row.names = F)
 
 DimPlot(ds2)
-```
-```{r}
-sep = 0.4 #LUM的表达模式
-surfaceplot("LUM", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = -0.1)
 ```
 
 
@@ -159,4 +156,6 @@ surfaceplot("LUM", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 
 fibromyocyte_markers <- c("IGFBP2","BGN","DKK3","VCAN","RAMP1","SGCA","MYH10","FMOD","KRT8")
 multi_featureplot(fibromyocyte_markers,ds0)
 ```
+
+
 

@@ -7,9 +7,19 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
+```{r}
+source("tianfengRwrappers.R")
+library(xgboost)
+library(Matrix)
+library(mclust)
+library(tidyverse)
+```
+
+
 ## 数值化
 ### ds2训练分类器
 ```{r}
+
 ds2_data <- get_data_table(ds2, highvar = F, type = "data")
 ds2_label <- as.numeric(as.character(Idents(ds2)))
 
@@ -36,8 +46,20 @@ plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>%
             line = list(color = "#1E90FF80", width = 2)) %>% 
   layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
 ```
+
+```{r fig.height=6,fig.width=6}
+importance <- xgb.importance(colnames(ds2_train), model = bst_model)
+head(importance)
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()+theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+```
+
+
 ## ds2 -> ds1
 ```{r}
+Idents(ds1) <- ds1$seurat_clusters
 temp <- get_data_table(ds1, highvar = F, type = "data")
 ds1_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
                    byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
@@ -62,6 +84,7 @@ predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = length(levels(Idents(ds
 ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
 Idents(ds1) <- factor(ds1_res,levels = c(0:4))
 umapplot(ds1)
+ds1$supclustering <- Idents(ds1) #保存监督聚类结果
 ```
 
 ## 数值化地投射回umap
@@ -125,7 +148,9 @@ predict_prop_ds0 <- matrix(data=predict_ds0_test, nrow = length(levels(Idents(ds
 ds0_res <- apply(predict_prop_ds0,2,func,rownames(predict_prop_ds0))
 Idents(ds0) <- factor(ds0_res,levels = c(0:4))
 umapplot(ds0)
+ds0$supclustering <- Idents(ds0) #保存监督聚类结果
 ```
+
 ```{r}
 embedding <- FetchData(object = ds0, vars = c("UMAP_1", "UMAP_2"))
 embedding <- cbind(embedding, t(predict_prop_ds0))
@@ -198,7 +223,7 @@ AC_res <- apply(predict_prop_AC,2,func,rownames(predict_prop_AC))
 confuse_matrix1 <- table(AC_test_data$label, AC_res, dnn=c("true","pre"))
 sankey_plot(confuse_matrix1,session = "PAtoAC")
 
-Idents(ds2_AC) <- AC_res
+Idents(ds2_AC) <- factor(AC_res,levels = c(0:2))
 umapplot(ds2_AC)
 ```
 
@@ -226,8 +251,83 @@ ggobj <- ggplot() +
 ggsave("ds2_PAtoAC_umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
+
+
+## AC to PA
+```{r}
+Idents(ds2_AC) <- ds2_AC$seurat_clusters
+selected_features <- read.csv("./datatable/selected_features.csv", stringsAsFactors = F)
+selected_features <- selected_features$x
+AC_data <- get_data_table(ds2_AC, highvar = F, type = "data")
+AC_data <- AC_data[selected_features,]
+AC_label <- as.numeric(as.character(Idents(ds2_AC)))
+colnames(AC_data) <- NULL
+
+AC_train_data <- list(data = t(as(AC_data,"dgCMatrix")), label = AC_label)
+AC_train <- xgb.DMatrix(data = AC_train_data$data,label = AC_train_data$label)
+xgb_ACram <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2_AC))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_ACram, AC_train, nrounds = 100, verbose = 0)
+```
+
+```{r}
+Idents(ds2_PA) <- factor(ds2_PA$seurat_clusters,levels = c(0,1,2))
+
+PA_data <- get_data_table(ds2_PA, highvar = F, type = "data")
+PA_data <- PA_data[selected_features,]
+PA_label <- as.numeric(as.character(Idents(ds2_PA)))
+colnames(PA_data) <- NULL
+PA_test_data <- list(data = t(as(PA_data,"dgCMatrix")), label = PA_label)
+PA_test <- xgb.DMatrix(data = PA_test_data$data,label = PA_test_data$label)
+
+#预测结果
+predict_prop_PA <-predict(bst_model, newdata = PA_test) %>%
+ matrix(nrow = length(levels(Idents(ds2_AC))), 
+                           ncol = ncol(ds2_PA), byrow = FALSE, 
+                           dimnames = list(levels(Idents(ds2_AC)),colnames(ds2_PA)))
+PA_res <- apply(predict_prop_PA,2,func,rownames(predict_prop_PA))
+
+confuse_matrix1 <- table(PA_test_data$label, PA_res, dnn=c("true","pre"))
+sankey_plot(confuse_matrix1,session = "ACtoPA")
+
+Idents(ds2_PA) <- factor(PA_res)
+umapplot(ds2_PA)
+```
+
+```{r}
+embedding <- FetchData(object = ds2_PA, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, t(predict_prop_PA))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`0`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `0`), shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+     new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 2, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("ds2_ACtoPA_umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
+```
+
+
 ## 在ds0上训练
 ```{r}
+Idents(ds0) <- ds0$seurat_clusters
 ds0_data <- get_data_table(ds0, highvar = F, type = "data")
 ds0_label <- as.numeric(as.character(Idents(ds0)))
 
@@ -255,14 +355,17 @@ plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>%
   layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"))
 ```
 
-```{r}
+```{r fig.width=6,fig.height=6}
 importance <- xgb.importance(colnames(ds0_train), model = bst_model)
 head(importance)
-xgb.ggplot.importance(head(importance,20), n_clusters = 1) + theme_minimal()
-
-multi_featureplot(head(importance,9)$Feature, ds0) 
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()+theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
+write.csv(importance, "./datatable/ds0_features.csv", row.names = F)
+multi_featureplot(head(importance,9)$Feature, ds0, labels = "") 
 ```
-
+## ds0 -> ds2
 ```{r}
 Idents(ds2) <- ds2$seurat_clusters 
 temp <- get_data_table(ds2, highvar = F, type = "data")
@@ -332,9 +435,8 @@ ggobj <- ggplot() +
 ggsave("ds0tods2umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
-
+## ds0 -> ds1
 ```{r}
-
 Idents(ds1) <- ds1$seurat_clusters
 temp <- get_data_table(ds1, highvar = F, type = "data")
 ds1_data <- matrix(data=0, nrow = length(rownames(ds0_data)), ncol = length(colnames(temp)), 
@@ -401,6 +503,15 @@ ggobj <- ggplot() +
 ggsave("ds0tods1umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
+
+
+##lym
+```{r}
+
+```
+
+
+## ARI 和聚类数的关系
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

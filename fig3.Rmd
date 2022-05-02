@@ -1,0 +1,546 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+source("tianfengRwrappers.R")
+```
+```{r}
+ds2 <- readRDS("ds2.rds")
+```
+
+# umapplot
+```{r}
+umapplot(ds2)
+ds2 <- RenameIdents(ds2,"FB" = "Fibroblast", "pericyte" = "Pericyte","fibromyocyte"="Fibromyocyte")
+umapplot(ds2, group.by = "seurat_clusters")
+Idents(ds2) <- factor(Idents(ds2),levels = c("SMC1","Fibromyocyte","Pericyte","Fibroblast","SMC2"))
+umapplot(ds2)
+ds2$Classification1 <- Idents(ds2)
+saveRDS(ds2,"ds2.rds")
+
+ggsave("./fig3/ds2.svg",plot = umapplot(ds2),device = svg, width = 6, height = 5)
+```
+
+```{r}
+ds0 <- readRDS("ds0.rds")
+```
+
+# 周细胞的存在
+```{r fig.width=6,fig.height=6}
+
+ggsave("./fig3/ds0.svg",plot = umapplot(ds0),device = svg, width = 7, height = 5)
+
+## pericyte
+multi_featureplot(c("FABP4", "RERGL", "NRIP2","HIGD1B"),ds2,labels = "")
+```
+
+```{r}
+library(igraph)
+```
+
+```{r}
+ds1_expr <- get_averexpr_mat_cluster(ds1)
+cluster_info <- data.frame(colnames(ds1_expr),"1",check.names = F)
+
+ds2_expr <- get_averexpr_mat_cluster(ds2)
+cluster_info2 <- data.frame(colnames(ds2_expr),"2",check.names = F)
+
+selected_genes <- intersect(ds2@assays[["SCT"]]@var.features,ds1@assays[["SCT"]]@var.features)
+ds2_expr <- ds2_expr[selected_genes,]
+ds1_expr <- ds1_expr[selected_genes,]
+expr <- cbind(ds1_expr,ds2_expr)
+corr_mat <- cor(expr)
+
+col_fun <-  colorRamp2(c(0.7, 0.85, 1), c("#1E90FF", "white", "#ff2121"))
+Heatmap(corr_mat, cluster_rows = T, cluster_columns = T, 
+        show_column_names = T, show_row_names = T,
+ column_title = NULL,
+ heatmap_legend_param = list(
+ title='Cor', title_position='leftcenter-rot'), col = col_fun)
+```
+
+## 基因表达
+ds2 -> ds1
+无监督聚类
+```{r}
+ds1 <- readRDS("ds1.rds")
+ds2FbM <- subset(ds2,ident = "Fibromyocyte")
+ds1FbM <- subset(ds1,ident = "Fibromyocyte")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds1data <- get_data_table(ds1FbM,type = "data")
+
+# ds2expr <- data.frame(expr = ds2data["DCN",], sample = "ds2", gene = "DCN")
+# rownames(ds2expr) <- NULL
+# ds1expr <- data.frame(expr = ds1data["DCN",], sample = "ds1")
+# rownames(ds1expr) <- NULL
+# merge_expr <- rbind(ds2expr,ds1expr)
+
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+func1 <- function(gene, sample, datable){
+  data.frame(expr = datable[gene,], sample = sample, gene = gene)
+}
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+
+rownames(merge_expr) <- NULL
+
+
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggsave("unds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+
+```
+# 监督聚类结果
+## 这里使用numeric的分群
+```{r}
+ds2FbM <- subset(ds2,ident = "1")
+ds1FbM <- subset(ds1,ident = "1")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds1data <- get_data_table(ds1FbM,type = "data")
+
+# ds2expr <- data.frame(expr = ds2data["DCN",], sample = "ds2", gene = "DCN")
+# rownames(ds2expr) <- NULL
+# ds1expr <- data.frame(expr = ds1data["DCN",], sample = "ds1")
+# rownames(ds1expr) <- NULL
+# merge_expr <- rbind(ds2expr,ds1expr)
+
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+func1 <- function(gene, sample, datable){
+  data.frame(expr = datable[gene,], sample = sample, gene = gene)
+}
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+
+ggsave("supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+# ds2 -> ds0
+## 无监督聚类
+```{r}
+ds2FbM <- subset(ds2,ident = "1")
+ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+
+ggsave("unds2tods0.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+## 监督聚类
+
+```{r}
+Idents(ds0) <- ds0$supclustering
+ds2FbM <- subset(ds2,ident = "1")
+ds0FbM <- subset(ds0,ident = "1")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+
+ggsave("supds2tods0.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+# ds0 -> ds2
+##无监督聚类
+```{r}
+ds2 <- readRDS("ds2.rds")
+Idents(ds0) <- ds0$Classification1
+ds2FbM <- subset(ds2,ident = "Fibromyocyte")
+ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+
+ggsave("2_unds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+## 监督聚类
+ds0 -> ds2
+```{r}
+
+ds2FbM <- subset(ds2,ident = "2")
+ds0FbM <- subset(ds0,ident = "2")
+
+ds2data <- get_data_table(ds2FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+# genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+ggsave("supds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+
+
+# ds0 -> ds1
+##无监督聚类
+```{r}
+Idents(ds1) <- ds1$Classification1
+Idents(ds0) <- ds0$Classification1
+ds1FbM <- subset(ds1,ident = "Fibromyocyte")
+ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+
+ds1data <- get_data_table(ds1FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+func <- function(gene, sample, datable){
+  data.frame(expr = datable[gene,], sample = sample, gene = gene)
+}
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+ggsave("2_unds0tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+## 监督聚类
+ds0 -> ds1
+```{r}
+Idents(ds0) <- ds0$seurat_clusters
+ds1FbM <- subset(ds1,ident = "2")
+ds0FbM <- subset(ds0,ident = "2")
+
+ds1data <- get_data_table(ds1FbM,type = "data")
+ds0data <- get_data_table(ds0FbM,type = "data")
+
+# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+ggsave("2_supds0tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+
+
+```{r}
+mytheme <- theme(plot.title = element_text(size = 12,color="black",hjust = 0.5),
+                     axis.title = element_text(size = 12,color ="black"), 
+                     axis.text = element_text(size= 12,color = "black"),
+                     panel.grid.minor.y = element_blank(),
+                     panel.grid.minor.x = element_blank(),
+                     axis.text.x = element_text(angle = 45, hjust = 1 ),
+                     panel.grid=element_blank(),
+                     legend.position = "top",
+                     legend.text = element_text(size= 12),
+                     legend.title= element_text(size= 12)) 
+
+# https://stackoverflow.com/a/45614547
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, draw_group = function(self, data, ..., draw_quantiles = NULL){
+  data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+  grp <- data[1,'group']
+  newdata <- plyr::arrange(transform(data, x = if(grp%%2==1) xminv else xmaxv), if(grp%%2==1) y else -y)
+  newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+  newdata[c(1,nrow(newdata)-1,nrow(newdata)), 'x'] <- round(newdata[1, 'x']) 
+  if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+    stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <= 
+                                              1))
+    quantiles <- ggplot2:::create_quantile_segment_frame(data, draw_quantiles)
+    aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+    aesthetics$alpha <- rep(1, nrow(quantiles))
+    both <- cbind(quantiles, aesthetics)
+    quantile_grob <- GeomPath$draw_panel(both, ...)
+    ggplot2:::ggname("geom_split_violin", grid::grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))
+  }
+  else {
+    ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...))
+  }
+})
+
+geom_split_violin <- function (mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., draw_quantiles = NULL, trim = TRUE, scale = "area", na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, position = position, show.legend = show.legend, inherit.aes = inherit.aes, params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+}
+```
+
+
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

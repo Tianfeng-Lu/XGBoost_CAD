@@ -1,0 +1,78 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+regulonActivity <- read.csv("./ds2_SCENIC/ds2SCENICres/regulonActivity.csv",row.names = 1)
+topTFs <- read.csv("./ds2_SCENIC/ds2SCENICres/topRegulators.csv")
+
+
+# colnames(regulonActivity)[colnames(regulonActivity)=="T.cell"] <- "T cell"
+
+top5 <- topTFs %>% group_by(seuratCluster) %>% slice_max(n = 5, order_by = RelativeActivity)
+
+#根据已知的top5更新行顺序
+top_regulonActivity <- regulonActivity[sapply(top5$Regulon, function(e) {which(rownames(regulonActivity) == e)}), ]
+annotation_row <-  data.frame(cluster = factor(top5$seuratCluster), row.names = make.names(top5$Regulon,TRUE)) #make.names用来生成不冲突的行
+
+TFs_heatmap <- pheatmap(top_regulonActivity, breaks = unique(c(seq(-2,2, length=400))), 
+                 color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(400),
+                border_color = NA, cluster_rows = FALSE, cluster_cols = FALSE,
+                main = "regulonActivity",angle_col = 45, show_rownames = T)
+# ggsave("TFs_activity.png",device = png,width = 10,height = 8,plot = TFs_heatmap)
+
+TFs_heatmap
+```
+
+```{r}
+heatmapTFs <- topTFs %>% group_by(seuratCluster) %>% slice_max(n = 2000, order_by = RelativeActivity)
+
+top_regulonActivity <- regulonActivity[sapply(heatmapTFs$Regulon, function(e) {which(rownames(regulonActivity) == e)}), ]
+# annotation_row <-  data.frame(cluster = factor(top5$seuratCluster), row.names = make.names(top5$Regulon,TRUE))
+genes_to_show <- top5$Regulon
+##获得基因和细胞聚类信息
+cluster_info <- colnames(regulonActivity)
+
+##筛选矩阵为要画热图的基因
+mat <- top_regulonActivity
+
+#获得要展示的基因在热图中的位置信息
+gene_pos <- match(genes_to_show, rownames(mat))
+row_anno <- rowAnnotation(gene=anno_mark(at=gene_pos,labels = genes_to_show))
+
+col <- colors_list[c(4,2,3,1,5)]
+names(col) <- cluster_info
+top_anno <- HeatmapAnnotation(cluster=anno_block(gp=gpar(fill=col),labels = cluster_info,
+                                                 labels_gp = gpar(cex=1,col='black'))) ## 顶端的cluster注释
+
+
+col_fun <-  colorRamp2(c(-2, 0, 2), c("#1E90FF", "white", "#ff2121")) #颜色
+
+svg("ds2TFs.svg",height = 6,width = 10)
+Heatmap(mat, cluster_rows = FALSE, cluster_columns = FALSE, 
+        show_column_names = FALSE, show_row_names = FALSE,
+        column_split = cluster_info, top_annotation = top_anno,  
+        column_title = NULL, right_annotation = row_anno, 
+        heatmap_legend_param = list(
+          title='Regulon Activity', title_position='leftcenter-rot'), col = col_fun)
+dev.off()
+```
+
+```{r}
+top_regulonActivity[heatmapTFs$Regulon,]
+heatmapTFs$Regulon
+top_regulonActivity
+subset(top_regulonActivity)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
