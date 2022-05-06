@@ -16,7 +16,7 @@ library(CellChat)
 ```{r}
 ds2 <- readRDS("ds2.rds")
 CA_dataset2 <- readRDS("CA_dataset2.rds")
-saveRDS(CA_dataset2,"CA_dataset2.rds")
+# saveRDS(CA_dataset2,"CA_dataset2.rds")
 umapplot(CA_dataset2)
 ```
 
@@ -24,6 +24,9 @@ umapplot(CA_dataset2)
 Idents(CA_dataset2) <- CA_dataset2$Classification1
 CA_dataset2 <- FindSubCluster(CA_dataset2, cluster = 'SMC', graph.name = 'SCT_snn',resolution = 0.15 )
 Idents(CA_dataset2) <- CA_dataset2$sub.cluster
+
+CA_dataset2 <- RenameIdents(CA_dataset2, "Mod_SMC"="Fibroblast", "SMC_0"="SMC1","SMC_1"="Fibromyocyte",
+                   "SMC_2"="Pericyte","SMC_3"="SMC2")
 umapplot(CA_dataset2)
 f("DLX6-AS1",CA_dataset2)
 ```
@@ -63,7 +66,7 @@ cor <- computeCommunProbPathway(cor)
 
 #合并通信网络数据
 cor <- aggregateNet(cor)
-# saveRDS(cor,"CA2_cellchat.rds")
+saveRDS(cor,"CA2_cellchat.rds")
 ```
 ```{r}
 write.csv(df.net,"./datatable/cellchat_res.csv", row.names = F)
@@ -73,7 +76,11 @@ write.csv(df.net,"./datatable/cellchat_res.csv", row.names = F)
 
 ## cellchat可视化
 ```{r,fig.height=6,fig.width=6}
-# cor <- readRDS("CA2_cellchat.rds")
+cor <- readRDS("CA2_cellchat.rds")
+
+# cor@idents <- plyr::revalue(cor@idents, c("Mod_SMC"="Fibroblast", "SMC_0"="SMC1","SMC_1"="Fibromyocyte",
+#                    "SMC_2"="Pericyte","SMC_3"="SMC2"))
+
 table(cor@idents)
 groupSize <- as.numeric(table(cor@idents))
 netVisual_circle(cor@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength")
@@ -91,21 +98,17 @@ for (i in 1:nrow(mat)) {
          # cluster_cols = FALSE, color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(400), border_color = NA)
 table(cor@idents)
 ```
-# mod_SMC -- ACKR3
 
 ```{r,fig.height=6,fig.width=6}
-#chord plot
-## 免疫细胞 c(4,5,8,9,11) 和SMC c(2,3,6,7,13)的关系
-netVisual_chord_gene(cor, sources.use = c(4,5,8,9,11), targets.use = c(2,3,6,7,13), lab.cex = 0.5, legend.pos.y = 30)
+netVisual_chord_gene(cor, sources.use = c(4), targets.use = c(1:12), lab.cex = 0.5, legend.pos.y = 30)
 
-##SMC内部
-netVisual_chord_gene(cor, sources.use = c(7,13), targets.use = c(2,3,6), lab.cex = 0.5, legend.pos.y = 30)
+netVisual_chord_gene(cor, sources.use = c(1:12), targets.use = c(4), lab.cex = 0.5, legend.pos.y = 30)
 ```
 
 
 ```{r,fig.height=6,fig.width=6}
 #指定pathway
-pathways.show <- c("TNF") #在mod_SMC上调
+pathways.show <- c("TGFb") #SMC2
 # Hierarchy plot
 vertex.receiver = c(2,3,6,7,13) # a numeric vector. 
 netVisual_aggregate(cor, signaling = pathways.show, layout = "hierarchy", vertex.receiver = vertex.receiver)

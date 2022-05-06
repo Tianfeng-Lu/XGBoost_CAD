@@ -1,0 +1,66 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+source("tianfengRwrappers.R")
+```
+
+## 功能分析
+BMP相关基因
+```{r}
+
+ggsave("dotBMPmarkers_ds2.svg", device = svg, plot = Dotplot(c("DLX6","DLX5","DLX6-AS1","SOST"),ds2), height = 6, width = 8)
+ggsave("dotBMPmarkers_ds1.svg", device = svg, plot = Dotplot(c("DLX6","DLX5","DLX6-AS1","SOST"),ds1), height = 6, width = 8)
+
+
+ggsave("BMPmarkers_ds2.png", device = png, plot = multi_featureplot(c("DLX6","DLX5","DLX6-AS1","SOST"),ds2,labels = ""), height = 6, width = 7)
+ggsave("BMPmarkers_ds1.png", device = png, plot = multi_featureplot(c("DLX6","DLX5","DLX6-AS1","SOST"),ds1,labels = ""), height = 6, width = 7)
+
+
+sep = 0.3
+surfaceplot2("DLX6-AS1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), z_height = 4)
+```
+
+# BMP通路相关
+```{r}
+Dotplot(c("BMPR1A","BMPR1B"),ds2)
+Dotplot(c("BMPR1A","BMPR1B"),ds1)
+ggsave("BMPreceptor_ds1.svg", device = svg, plot = Dotplot(c("BMPR1A","BMPR1B"),ds1), height = 6, width = 5)
+ggsave("BMPreceptor_ds2.svg", device = svg, plot = Dotplot(c("BMPR1A","BMPR1B"),ds2), height = 6, width = 5)
+```
+
+
+
+
+# 雷达图 fig4
+```{r}
+library(fmsb)
+data <- read.csv("./go_res.csv",row.names = 1,quote = "", check.names=FALSE)
+# data=as.data.frame(matrix(sample(0:50, 18,replace=T) , ncol=6))
+# colnames(data)=c('IL-1 signaling pathway','Response to IFNa','NFkB signaling pathway','IL-6 signaling pathway', 'Muscle contraction','Response to IFNr')
+# rownames(data) <- c('Monocyte','Neutrophil','Macrophage')
+# 用于生成雷达图的最大最小值
+data=rbind(rep(15,5) , rep(-10,5) , data)
+
+
+colors_border <- colors_list[c(4,1,5)]
+colors_in <- aero_colors_list[c(4,1,5)]
+
+svg("GO_res.svg",height = 8,width = 10)
+radarchart(data, axistype=0, seg = 5,
+ pcol=colors_border, pfcol=colors_in, plwd=1.3 , plty=1,pty=32,
+ cglcol="black", cglty=3, cglwd=0.6,
+)
+legend(x=-1.6, y=0.5, legend = rownames(data[-c(1,2),]), bty = "n", pch=20 , col=colors_border, text.col = "black", cex=1, pt.cex=2)
+dev.off()
+```
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
