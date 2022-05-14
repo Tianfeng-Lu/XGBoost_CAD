@@ -19,7 +19,6 @@ library(tidyverse)
 ## 数值化
 ### ds2训练分类器
 ```{r}
-
 ds2_data <- get_data_table(ds2, highvar = F, type = "data")
 ds2_label <- as.numeric(as.character(Idents(ds2)))
 

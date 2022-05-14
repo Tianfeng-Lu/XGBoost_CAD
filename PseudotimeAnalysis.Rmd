@@ -16,7 +16,6 @@ library(monocle3)
 
 # 载入数据转换成cds对象
 ```{r}
-
 expression <- GetAssayData(ds2, assay = "RNA", slot = 'counts')
 cell_metadata <- ds2@meta.data
 gene_annotation <- data.frame(gene_short_name = rownames(expression))

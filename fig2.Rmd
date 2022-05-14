@@ -17,42 +17,7 @@ ggobj <- multi_featureplot(selected_features[1:9], ds2, labels = NULL)
 ggsave("ds2_features.png", device = png, height = 8, width = 8, plot = ggobj)
 ```
 ## 病变亚群的识别
-
-```{r}
-embedding <- FetchData(object = ds2, vars = c("UMAP_1", "UMAP_2","seurat_clusters"))
-colnames(embedding) <- c("UMAP_1", "UMAP_2", "seurat_clusters")
-
-sep = 0.3
-surfaceplot("ACTA2", ds2, x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep), alpha = 1, baseline = 0) %>%
-   layout(scene = list(xaxis = list(title = 'x',
-                      showgrid = F, range = list(-2,13),
-                      zerolinecolor = '#FFFFFF00'),yaxis = list(title = 'y',
-                      showgrid = F,range = list(2,17),
-                      zerolinecolor = '#FFFFFF00'),zaxis = list(title = 'z',
-                      showgrid = F,
-                      zerolinecolor = '#FFFFFF00'),
-                      camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)))) %>%
-    add_trace(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 4, type = "scatter3d",
-              inherit = F, split = embedding$seurat_clusters,  mode = "markers", 
-              marker = list(symbol = 'circle', opacity = 0.2, size = 1.5,
-                            line = list(color = '#FFFFFF00', width = 1)))
-# 
-#  plot_ly(x = embedding$UMAP_1, y = embedding$UMAP_2, z = 0, type = "scatter3d", size = 0.2, alpha = 1,color = embedding$seurat_clusters,colors = c("#6dc0a6", "#e2b398", "#e2a2ca", "#d1eba8", "#b1d6fb"), mode = "markers") %>%
-#    layout(scene = list(xaxis = list(title = 'x',
-#                       showgrid = F, range = list(-2,13),
-#                       zerolinecolor = '#FFFFFF'),yaxis = list(title = '',
-#                       showgrid = F,range = list(2,17),
-#                       zerolinecolor = '#FFFFFF'),zaxis = list(title = '',
-#                       showgrid = F,
-#                       zerolinecolor = '#FFFFFF'),
-#       camera=list(eye = list(x=-1.25, y=-1.25, z=1.25)) ))
-# 
-# pal <- c("red", "green", "blue", "goldenrod", "magenta")
-# pal <- setNames(pal, c("0", "1", "2", "3", "4"))
-
-```
-
-# LUM
+### LUM
 ```{r}
 sep = 0.3
 surfaceplot2("LUM",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
@@ -91,7 +56,6 @@ f("SMC_score1", ds2, min.cutoff = 0)
 geneset <- read.table("FB")
 ds2 <- AddModuleScore(ds2,features = geneset, name = 'FB_score')
 f("FB_score1", ds2, min.cutoff = 0)
-
 ```
 
 

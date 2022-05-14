@@ -18,7 +18,7 @@ Idents(CA_dataset2) <- CA_dataset2$conditions
 umap_AC <- umapplot(subset(CA_dataset2, idents = "AC"), group.by = "Classification1")
 umap_PA <- umapplot(subset(CA_dataset2, idents = "PA"), group.by = "Classification1")
 
-ggsave("umap_AC.svg",device = svg,width = 6,height = 4,plot = umap_AC)
+ilcox.test
 ggsave("umap_PA.svg",device = svg,width = 6,height = 4,plot = umap_PA)
 
 ## fig.2

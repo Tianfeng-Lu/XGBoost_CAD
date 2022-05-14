@@ -1,0 +1,816 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(SingleCellExperiment)
+library(scmap)
+library(Seurat)
+library(xgboost)
+library(Matrix)
+set.seed(1)
+source("tianfengRwrappers.R")
+```
+
+
+## 构造ref ds0
+```{r}
+ds0 <- readRDS("ds0.rds")
+ref_sce <- as.SingleCellExperiment(ds0)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+# normcounts(ref_sce) <- as.matrix(normcounts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+ref_sce <- indexCell(ref_sce)
+```
+## 环回ds0
+```{r}
+scmapCell_results <- scmapCell(ref_sce, list(ds0 = metadata(ref_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(ref_sce)$Classification1)))
+
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds0))
+Idents(ds0) <- temp
+ggsave("./scmap/scmap_ds0tods0.svg", device = svg, width = 6, height = 4, plot = umapplot(ds0))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds0tods0',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+## 计算ARI = 0.8925608
+```{r}
+mclust::adjustedRandIndex(temp[,1], ds0$Classification1)
+```
+# confusing matrix
+```{r}
+conmat <- table(as.character(ds0$Classification1), temp[,1], dnn=c("true","pre"))
+conmat_prop <- prop.table(conmat, 1)
+conmat_prop
+
+confuse_bubblemat(conmat_prop, rownames(conmat_prop),  colnames(conmat_prop),"ds0_scmap")
+```
+
+
+## XGBoost
+```{r}
+Idents(ds0) <- ds0$Classification1
+ds0 <- RenameIdents(ds0, 'Fibroblast' = 0, 'SMC' = 1, 'Fibromyocyte' = 2, 'Pericyte' = 3, 'Unknown' = 4)
+umapplot(ds0)
+ds0_data <- get_data_table(ds0, highvar = F, type = "data")
+ds0_label <- as.numeric(as.character(Idents(ds0)))
+
+set.seed(7)
+index <- c(1:dim(ds0_data)[2]) %>% sample(ceiling(0.3*dim(ds0_data)[2]), replace = F, prob = NULL)
+
+colnames(ds0_data) <- NULL
+
+ds0_train_data <- list(data = t(as(ds0_data[,-index],"dgCMatrix")), label = ds0_label[-index])
+ds0_test_data <- list(data = t(as(ds0_data[,index],"dgCMatrix")), label = ds0_label[index])
+
+ds0_train <- xgb.DMatrix(data = ds0_train_data$data,label = ds0_train_data$label)
+ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
+
+
+watchlist <- list(train = ds0_train, eval = ds0_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds0))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, ds0_train, nrounds = 100, watchlist, verbose = 0)
+
+```
+
+```{r,fig.height=4,fig.width=4}
+predict_ds0_test <- round(predict(bst_model, newdata = ds0_test))
+ds0_confuse_matrix_test <- table(ds0_test_data$label, predict_ds0_test, dnn=c("true","pre"))
+ds0_confuse_matrix_test_prop <- prop.table(ds0_confuse_matrix_test, 1)
+ds0_confuse_matrix_test_prop
+
+confuse_bubblemat(ds0_confuse_matrix_test_prop, c("Fibroblast", "SMC", "Fibromyocyte", "Pericyte", "Unknown"), c("Fibroblast", "SMC", "Fibromyocyte", "Pericyte", "Unknown"),"ds0_pretrain")
+
+adjustedRandIndex(ds0_test_data$label, predict_ds0_test) #ARI = 0.9316151
+```
+
+
+## 构造query
+```{r}
+set.seed(1)
+ds2 <- readRDS("ds2.rds")
+query_sce <- as.SingleCellExperiment(ds2)
+logcounts(query_sce) <- log2(counts(query_sce) + 1)
+
+counts(query_sce) <- as.matrix(counts(query_sce))
+# normcounts(query_sce) <- as.matrix(normcounts(query_sce))
+logcounts(query_sce) <- as.matrix(logcounts(query_sce))
+
+rowData(query_sce)$feature_symbol <- rownames(query_sce)
+query_sce <- query_sce[!duplicated(rownames(query_sce)), ]
+query_sce <- selectFeatures(query_sce, suppress_plot = FALSE)
+query_sce <- indexCell(query_sce)
+```
+
+## 环回ds2
+```{r}
+scmapCell_results <- scmapCell(query_sce, list(ds2 = metadata(query_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(query_sce)$Classification1)))
+
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds2"],row.names = colnames(ds2))
+Idents(ds2) <- temp
+ggsave("./scmap/scmap_ds2tods2.svg", device = svg, width = 6, height = 4, plot = umapplot(ds2))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds2tods2',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+## 计算ARI = 0.776329
+```{r}
+mclust::adjustedRandIndex(temp[,1], ds2$Classification1) 
+```
+# confusing matrix ds2
+```{r}
+conmat <- table(as.character(ds2$Classification1), temp[,1], dnn=c("true","pre"))
+conmat_prop <- prop.table(conmat, 1)
+conmat_prop
+
+confuse_bubblemat(conmat_prop, rownames(conmat_prop),  colnames(conmat_prop),"ds2_scmap")
+```
+
+## XGBoost ds2
+```{r}
+Idents(ds2) <- ds2$Classification1
+ds2 <- RenameIdents(ds2, 'SMC1' = 0, 'Fibromyocyte' = 1, 'Pericyte' = 2, 'Fibroblast' = 3, 'SMC2' = 4)
+
+ds2_data <- get_data_table(ds2, highvar = F, type = "data")
+ds2_label <- as.numeric(as.character(Idents(ds2)))
+
+set.seed(7)
+index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
+colnames(ds2_data) <- NULL
+ds2_train_data <- list(data = t(as(ds2_data[,-index],"dgCMatrix")), label = ds2_label[-index])
+ds2_test_data <- list(data = t(as(ds2_data[,index],"dgCMatrix")), label = ds2_label[index])
+
+ds2_train <- xgb.DMatrix(data = ds2_train_data$data,label = ds2_train_data$label)
+ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
+
+
+watchlist <- list(train = ds2_train, eval = ds2_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+
+bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
+
+```
+
+```{r,fig.height=4,fig.width=4}
+predict_ds2_test <- round(predict(bst_model, newdata = ds2_test))
+ds2_confuse_matrix_test <- table(ds2_test_data$label, predict_ds2_test, dnn=c("true","pre"))
+ds2_confuse_matrix_test_prop <- prop.table(ds2_confuse_matrix_test, 1)
+ds2_confuse_matrix_test_prop
+
+confuse_bubblemat(ds2_confuse_matrix_test_prop, c("SMC1", "Fibromyocyte", "Pericyte", "Fibroblast", "SMC2"),  c("SMC1", "Fibromyocyte", "Pericyte", "Fibroblast", "SMC2"),"ds2_pretrain")
+
+adjustedRandIndex(ds2_test_data$label, predict_ds2_test) #ARI = 0.9002053
+set.seed(1)
+```
+
+## ds2 project to ds0
+```{r}
+scmapCell_results <- scmapCell(query_sce, list(ds0 = metadata(ref_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(ref_sce)$Classification1)))
+
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds2))
+Idents(ds2) <- temp
+ggsave("./scmap/scmap_ds2tods0.svg", device = svg, width = 6, height = 4, plot = umapplot(ds2))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds2tods0',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+```{r}
+ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+ds2FbM <- subset(ds2,ident = "Fibromyocyte")
+
+ds0data <- get_data_table(ds0FbM,type = "data")
+ds2data <- get_data_table(ds2FbM,type = "data")
+
+# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+ggsave("./scmap/scmapsupds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+# ds0 project to ds2
+## 构造ref
+```{r}
+ds2 <- readRDS("ds2.rds")
+ref_sce <- as.SingleCellExperiment(ds2)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+# normcounts(ref_sce) <- as.matrix(normcounts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+ref_sce <- indexCell(ref_sce)
+```
+
+## 构造query
+```{r}
+ds0 <- readRDS("ds0.rds")
+query_sce <- as.SingleCellExperiment(ds0)
+logcounts(query_sce) <- log2(counts(query_sce) + 1)
+
+counts(query_sce) <- as.matrix(counts(query_sce))
+# normcounts(query_sce) <- as.matrix(normcounts(query_sce))
+logcounts(query_sce) <- as.matrix(logcounts(query_sce))
+
+rowData(query_sce)$feature_symbol <- rownames(query_sce)
+query_sce <- query_sce[!duplicated(rownames(query_sce)), ]
+query_sce <- selectFeatures(query_sce, suppress_plot = FALSE)
+query_sce <- indexCell(query_sce)
+```
+
+```{r}
+scmapCell_results <- scmapCell(query_sce, list(ds2 = metadata(ref_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(ref_sce)$Classification1)))
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds2"], row.names = colnames(ds0))
+Idents(ds0) <- temp
+ggsave("./scmap/scmap_ds0tods2.svg", device = svg, width = 6, height = 4, plot = umapplot(ds0))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds0tods2',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+
+
+```{r}
+ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+ds2FbM <- subset(ds2,ident = "Fibromyocyte")
+
+ds0data <- get_data_table(ds0FbM,type = "data")
+ds2data <- get_data_table(ds2FbM,type = "data")
+
+# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
+genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds0",ds0data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+ggsave("./scmap/scmapsupds2tods0.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+
+
+## Appendix ds1
+
+## 构造ref ds1
+```{r}
+ds1 <- readRDS("ds1.rds")
+ref_sce <- as.SingleCellExperiment(ds1)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+# normcounts(ref_sce) <- as.matrix(normcounts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+ref_sce <- indexCell(ref_sce)
+```
+## 环回ds1
+```{r}
+scmapCell_results <- scmapCell(ref_sce, list(ds1 = metadata(ref_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(ref_sce)$Classification1)))
+
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds1"],row.names = colnames(ds1))
+Idents(ds1) <- temp
+ggsave("./scmap/scmap_ds1tods1.svg", device = svg, width = 6, height = 4, plot = umapplot(ds1))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds1tods1',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+## 计算ARI = 0.7935582 ds1
+```{r}
+mclust::adjustedRandIndex(temp[,1], ds1$Classification1)
+```
+# confusing matrix
+```{r}
+conmat <- table(as.character(ds1$Classification1), temp[,1], dnn=c("true","pre"))
+conmat_prop <- prop.table(conmat, 1)
+conmat_prop
+
+confuse_bubblemat(conmat_prop, rownames(conmat_prop),  colnames(conmat_prop),"ds1_scmap")
+```
+
+## XGBoost ds1
+```{r}
+Idents(ds1) <- ds1$Classification1
+ds1 <- RenameIdents(ds1, 'Unknown' = 0, 'SMC1' = 1, 'Fibromyocyte' = 2, 'SMC2' = 3)
+ds1_data <- get_data_table(ds1, highvar = F, type = "data")
+ds1_label <- as.numeric(as.character(Idents(ds1)))
+
+set.seed(7)
+index <- c(1:dim(ds1_data)[2]) %>% sample(ceiling(0.3*dim(ds1_data)[2]), replace = F, prob = NULL)
+colnames(ds1_data) <- NULL
+ds1_train_data <- list(data = t(as(ds1_data[,-index],"dgCMatrix")), label = ds1_label[-index])
+ds1_test_data <- list(data = t(as(ds1_data[,index],"dgCMatrix")), label = ds1_label[index])
+ds1_train <- xgb.DMatrix(data = ds1_train_data$data,label = ds1_train_data$label)
+ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+
+watchlist <- list(train = ds1_train, eval = ds1_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds1))),
+                  objective = "multi:softmax", eval_metric = 'mlogloss')
+bst_model <- xgb.train(xgb_param, ds1_train, nrounds = 100, watchlist, verbose = 0)
+```
+
+```{r,fig.height=4,fig.width=4}
+predict_ds1_test <- round(predict(bst_model, newdata = ds1_test))
+ds1_confuse_matrix_test <- table(ds1_test_data$label, predict_ds1_test, dnn=c("true","pre"))
+ds1_confuse_matrix_test_prop <- prop.table(ds1_confuse_matrix_test, 1)
+ds1_confuse_matrix_test_prop
+
+confuse_bubblemat(ds1_confuse_matrix_test_prop, c("Unknown", "SMC1", "Fibromyocyte", "SMC2"), c("Unknown", "SMC1", "Fibromyocyte", "SMC2"),"ds1_pretrain")
+
+adjustedRandIndex(ds1_test_data$label, predict_ds1_test) #ARI = 0.8385574
+```
+
+
+## XGBoost
+```{r}
+Idents(ds0) <- ds0$Classification1
+ds0 <- RenameIdents(ds0, 'Fibroblast' = 0, 'SMC' = 1, 'Fibromyocyte' = 2, 'Pericyte' = 3, 'Unknown' = 4)
+ds0_data <- get_data_table(ds0, highvar = T, type = "data")
+ds0_label <- as.numeric(as.character(Idents(ds0)))
+ds0_ARI <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  index <- c(1:dim(ds0_data)[2]) %>% sample(ceiling(0.3*dim(ds0_data)[2]), replace = F, prob = NULL)
+  colnames(ds0_data) <- NULL
+  ds0_train_data <- list(data = t(as(ds0_data[,-index],"dgCMatrix")), label = ds0_label[-index])
+  ds0_test_data <- list(data = t(as(ds0_data[,index],"dgCMatrix")), label = ds0_label[index])
+  ds0_train <- xgb.DMatrix(data = ds0_train_data$data,label = ds0_train_data$label)
+  ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
+  
+  watchlist <- list(train = ds0_train, eval = ds0_test)
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents(ds0))),
+                    objective = "multi:softmax", eval_metric = 'mlogloss')
+  bst_model <- xgb.train(xgb_param, ds0_train, nrounds = 100, watchlist, verbose = 0)
+  predict_ds0_test <- round(predict(bst_model, newdata = ds0_test))
+  ds0_ARI[i] <- adjustedRandIndex(ds0_test_data$label, predict_ds0_test)
+}
+```
+
+```{r}
+Idents(ds1) <- ds1$Classification1
+ds1 <- RenameIdents(ds1, 'Unknown' = 0, 'SMC1' = 1, 'Fibromyocyte' = 2, 'SMC2' = 3)
+
+ds1_data <- get_data_table(ds1, highvar = T, type = "data")
+ds1_label <- as.numeric(as.character(Idents(ds1)))
+ds1_ARI <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  index <- c(1:dim(ds1_data)[2]) %>% sample(ceiling(0.3*dim(ds1_data)[2]), replace = F, prob = NULL)
+  colnames(ds1_data) <- NULL
+  ds1_train_data <- list(data = t(as(ds1_data[,-index],"dgCMatrix")), label = ds1_label[-index])
+  ds1_test_data <- list(data = t(as(ds1_data[,index],"dgCMatrix")), label = ds1_label[index])
+  ds1_train <- xgb.DMatrix(data = ds1_train_data$data,label = ds1_train_data$label)
+  ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+  
+  watchlist <- list(train = ds1_train, eval = ds1_test)
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents(ds1))),
+                    objective = "multi:softmax", eval_metric = 'mlogloss')
+  bst_model <- xgb.train(xgb_param, ds1_train, nrounds = 100, watchlist, verbose = 0)
+  predict_ds1_test <- round(predict(bst_model, newdata = ds1_test))
+  ds1_ARI[i] <- adjustedRandIndex(ds1_test_data$label, predict_ds1_test)
+}
+```
+
+```{r}
+Idents(ds2) <- ds2$Classification1
+ds2 <- RenameIdents(ds2, 'SMC1' = 0, 'Fibromyocyte' = 1, 'Pericyte' = 2, 'Fibroblast' = 3, 'SMC2' = 4)
+
+ds2_data <- get_data_table(ds2, highvar = T, type = "data")
+ds2_label <- as.numeric(as.character(Idents(ds2)))
+ds2_ARI <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
+  colnames(ds2_data) <- NULL
+  ds2_train_data <- list(data = t(as(ds2_data[,-index],"dgCMatrix")), label = ds2_label[-index])
+  ds2_test_data <- list(data = t(as(ds2_data[,index],"dgCMatrix")), label = ds2_label[index])
+  ds2_train <- xgb.DMatrix(data = ds2_train_data$data,label = ds2_train_data$label)
+  ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
+  
+  watchlist <- list(train = ds2_train, eval = ds2_test)
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents(ds2))),
+                    objective = "multi:softmax", eval_metric = 'mlogloss')
+  bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
+  predict_ds2_test <- round(predict(bst_model, newdata = ds2_test))
+  ds2_ARI[i] <- adjustedRandIndex(ds2_test_data$label, predict_ds2_test)
+}
+```
+
+
+## 构造ref ds0
+```{r}
+ref_sce <- as.SingleCellExperiment(ds0)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+
+scmapARI_ds0 <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  ref_sce <- indexCell(ref_sce)
+  scmapCell_results <- scmapCell(ref_sce, list(ds0 = metadata(ref_sce)$scmap_cell_index))
+  scmapCell_clusters <- scmapCell2Cluster(
+    scmapCell_results, 
+    list(as.character(colData(ref_sce)$Classification1)))
+  temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds0))
+  scmapARI_ds0[i] <- mclust::adjustedRandIndex(temp[,1], ds0$Classification1)
+}
+```
+
+## ARI ds1
+```{r}
+ref_sce <- as.SingleCellExperiment(ds1)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+
+scmapARI_ds1 <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  ref_sce <- indexCell(ref_sce)
+  scmapCell_results <- scmapCell(ref_sce, list(ds1 = metadata(ref_sce)$scmap_cell_index))
+  scmapCell_clusters <- scmapCell2Cluster(
+    scmapCell_results, 
+    list(as.character(colData(ref_sce)$Classification1)))
+  temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds1"],row.names = colnames(ds1))
+  scmapARI_ds1[i] <- mclust::adjustedRandIndex(temp[,1], ds1$Classification1)
+}
+```
+
+## ARI ds2
+```{r}
+ref_sce <- as.SingleCellExperiment(ds2)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+
+scmapARI_ds2 <- list()
+
+for(i in seq(1:10))
+{
+  set.seed(17*i)
+  ref_sce <- indexCell(ref_sce)
+  scmapCell_results <- scmapCell(ref_sce, list(ds2 = metadata(ref_sce)$scmap_cell_index))
+  scmapCell_clusters <- scmapCell2Cluster(
+    scmapCell_results, 
+    list(as.character(colData(ref_sce)$Classification1)))
+  temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds2"],row.names = colnames(ds2))
+  scmapARI_ds2[i] <- mclust::adjustedRandIndex(temp[,1], ds2$Classification1)
+}
+```
+
+# ARI performance
+```
+ARI    scmap     XGBoost
+ds0   0.8925608 0.9316151
+ds1   0.7935582 0.8385574
+ds2   0.776329  0.9002053
+
+```
+```{r ARI performance, fig.width=4, fig.height=6}
+data <- data.frame(scmapARI = as.numeric(scmapARI_ds0), xgbARI = as.numeric(ds0_ARI), group = 'ds0') %>%
+  rbind(data.frame(scmapARI = as.numeric(scmapARI_ds1), xgbARI = as.numeric(ds1_ARI), group = 'ds1')) %>% 
+  rbind(data.frame(scmapARI = as.numeric(scmapARI_ds2), xgbARI = as.numeric(ds2_ARI), group = 'ds2'))
+data <- reshape2::melt(data, value.name = "ARI")
+data <- data %>% data.frame(id = c(seq(1,dim(data)[1]/2),seq(1,dim(data)[1]/2)))
+
+saveRDS(data, "xgboostARI.rds")
+
+scmap <- data[data$variable=="scmapARI",]$ARI
+xgb <- data[data$variable=="xgbARI",]$ARI
+scmap_mean <- data[data$variable=="scmapARI",]$ARI %>% mean()
+xgb_mean <- data[data$variable=="xgbARI",]$ARI %>% mean()
+
+wilcox.test(scmap, xgb, paired = TRUE)
+
+
+ggobj <- ggplot(data, aes(x = variable, y = ARI, color=group)) + #
+  labs(x="type", y="ARI", title="ARI compare") +
+  theme_classic() +
+  stat_boxplot(width=0.5, outlier.colour = NA, lwd = 1) +
+  geom_line(aes(group=id), color="gray", position = position_dodge(0.2)) +
+  geom_point(aes(x = variable, y = ARI, color=group, group=id), # shape = variable 
+             size = 4, 
+             position = position_dodge(0.2)) +
+  scale_fill_manual(values = aero_colors_list) +
+  theme(panel.grid = element_line(colour = NA)) +
+  theme(legend.position="none") +
+  theme(axis.title = element_text(size = 20,color = "black"),
+        axis.text = element_text(size = 20,color = "black"),
+        axis.line = element_line(size = 1),
+        axis.ticks = element_line(size = 1),
+        title = element_text(size = 20))
+compare_means(ARI~variable, data=data, method = "t.test", paired = T, group.by = "group")
+
+
+ggsave("./scmap/scmapVSxgboost.svg", device = svg, width = 6, height = 8, plot = ggobj)
+```
+
+
+
+##SMC2的鉴别
+
+### ds1 project to ds2
+## 构造ref
+```{r}
+ds2 <- readRDS("ds2.rds")
+ref_sce <- as.SingleCellExperiment(ds2)
+logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+
+counts(ref_sce) <- as.matrix(counts(ref_sce))
+# normcounts(ref_sce) <- as.matrix(normcounts(ref_sce))
+logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+
+rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
+ref_sce <- indexCell(ref_sce)
+```
+
+## 构造query
+```{r}
+ds1 <- readRDS("ds1.rds")
+query_sce <- as.SingleCellExperiment(ds1)
+logcounts(query_sce) <- log2(counts(query_sce) + 1)
+
+counts(query_sce) <- as.matrix(counts(query_sce))
+# normcounts(query_sce) <- as.matrix(normcounts(query_sce))
+logcounts(query_sce) <- as.matrix(logcounts(query_sce))
+
+rowData(query_sce)$feature_symbol <- rownames(query_sce)
+query_sce <- query_sce[!duplicated(rownames(query_sce)), ]
+query_sce <- selectFeatures(query_sce, suppress_plot = FALSE)
+query_sce <- indexCell(query_sce)
+```
+
+
+```{r}
+scmapCell_results <- scmapCell(query_sce, list(ds2 = metadata(ref_sce)$scmap_cell_index))
+scmapCell_clusters <- scmapCell2Cluster(
+  scmapCell_results, 
+  list(as.character(colData(ref_sce)$Classification1)))
+temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds2"], row.names = colnames(ds1))
+Idents(ds1) <- temp
+ggsave("./scmap/scmap_ds1tods2.svg", device = svg, width = 6, height = 4, plot = umapplot(ds1))
+
+fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent+value',
+        insidetextfont = list(color = '#000000'),
+        hoverinfo = 'text',
+        text = ~paste0('cell numbers: ', Freq),
+        marker = list(colors = colors_list,
+                      line = list(color = '#FFFFFF', width = 0)),
+        showlegend = FALSE) %>% layout(title = 'scmap_ds1tods2',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), 
+         font = list(family = "Arial", size = 25, color = "black"))
+
+fig
+```
+
+
+# SMC2 比较 scmap vs xgboost vs unsupervised
+```{r}
+# ds1SMC2 <- subset(ds1,ident = "SMC2")
+# ds1SMC2 <- subset(ds1,ident = 4) # new_supervised_clustering.Rmd: line 22 - 86
+ds1SMC2 <- subset(ds1,ident = "SMC2") #readRDS("ds1.rds") 
+# ds2SMC2 <- subset(ds2,ident = "SMC2")
+ds2SMC2 <- subset(ds2,ident = 4)
+
+ds1data <- get_data_table(ds1SMC2,type = "data")
+ds2data <- get_data_table(ds2SMC2,type = "data")
+
+
+genes_to_show <- c("DLX6","DLX6-AS1","DLX5","SOST")
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test",
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+ggobj
+# ggsave("./scmap/scmapsupds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+# ggsave("./SMC2supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+ggsave("./SMC2unds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

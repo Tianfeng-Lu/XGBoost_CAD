@@ -219,8 +219,72 @@ pre code {
 <p>Try executing this chunk by clicking the <em>Run</em> button within the chunk or by placing your cursor inside it and pressing <em>Ctrl+Shift+Enter</em>.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdChjYXJzKVxuYGBgIn0= -->
-<pre class="r"><code>plot(cars)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc291cmNlKFwidGlhbmZlbmdSd3JhcHBlcnMuUlwiKVxuYGBgIn0= -->
+<pre class="r"><code>source(&quot;tianfengRwrappers.R&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="整合算法可能出现负值运行scenic时舍弃了这些异常值" class="section level2">
+<h2>整合算法可能出现负值，运行SCENIC时舍弃了这些异常值</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI+aPkOWPllNNQ+e7huiDnuS6mue+pFxuU01Dc19saXN0IDwtIGxpc3QoZHMxLGRzMClcblxuU01Dc19saXN0IDwtIGxhcHBseShYID0gU01Dc19saXN0LCBGVU4gPSBmdW5jdGlvbih4KSB7XG4gICAgeCA8LSBOb3JtYWxpemVEYXRhKHgpXG4gICAgeCA8LSBGaW5kVmFyaWFibGVGZWF0dXJlcyh4LCBzZWxTTUN0aW9uLm1ldGhvZCA9IFwidnN0XCIsIG5mZWF0dXJlcyA9IDIwMDApXG59KVxuI+mcgOimgeWIhuaekOeahOW3ruW8guWfuuWboFxuaW50X2ZlYXR1cmVzIDwtIFNlbGVjdEludGVncmF0aW9uRmVhdHVyZXMob2JqZWN0Lmxpc3QgPSBTTUNzX2xpc3QpXG4j6YCJ5oup5ZCI5bm255qEYW5jaG9y54m55b6BXG5pbnRfYW5jaG9ycyA8LSBGaW5kSW50ZWdyYXRpb25BbmNob3JzKG9iamVjdC5saXN0ID0gU01Dc19saXN0LCBhbmNob3IuZmVhdHVyZXMgPSBpbnRfZmVhdHVyZXMpXG5cbiPmoLnmja5hbmNob3LlkIjlubZcblNNQ3NfY29tYmluZWQgPC0gSW50ZWdyYXRlRGF0YShhbmNob3JzZXQgPSBpbnRfYW5jaG9ycylcblxuRGVmYXVsdEFzc2F5KFNNQ3NfY29tYmluZWQpIDwtIFwiaW50ZWdyYXRlZFwiXG5ybShcIlNNQ3NfbGlzdFwiLFwiaW50X2ZlYXR1cmVzXCIsXCJpbnRfYW5jaG9yc1wiKVxuYGBgIn0= -->
+<pre class="r"><code>#提取SMC细胞亚群
+SMCs_list &lt;- list(ds1,ds0)
+
+SMCs_list &lt;- lapply(X = SMCs_list, FUN = function(x) {
+    x &lt;- NormalizeData(x)
+    x &lt;- FindVariableFeatures(x, selSMCtion.method = &quot;vst&quot;, nfeatures = 2000)
+})
+#需要分析的差异基因
+int_features &lt;- SelectIntegrationFeatures(object.list = SMCs_list)
+#选择合并的anchor特征
+int_anchors &lt;- FindIntegrationAnchors(object.list = SMCs_list, anchor.features = int_features)
+
+#根据anchor合并
+SMCs_combined &lt;- IntegrateData(anchorset = int_anchors)
+
+DefaultAssay(SMCs_combined) &lt;- &quot;integrated&quot;
+rm(&quot;SMCs_list&quot;,&quot;int_features&quot;,&quot;int_anchors&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuU01Dc19jb21iaW5lZCA8LSBTY2FsZURhdGEoU01Dc19jb21iaW5lZCwgdmVyYm9zZSA9IEZBTFNFKVxuU01Dc19jb21iaW5lZCA8LSBSdW5QQ0EoU01Dc19jb21iaW5lZCwgbnBjcyA9IDMwLCB2ZXJib3NlID0gRkFMU0UpXG5TTUNzX2NvbWJpbmVkIDwtIFJ1blVNQVAoU01Dc19jb21iaW5lZCwgcmVkdWN0aW9uID0gXCJwY2FcIiwgZGltcyA9IDE6MzApXG5cblNNQ3NfY29tYmluZWQgPC0gRmluZE5laWdoYm9ycyhTTUNzX2NvbWJpbmVkLCByZWR1Y3Rpb24gPSBcInBjYVwiLCBkaW1zID0gMTozMClcblNNQ3NfY29tYmluZWQgPC0gRmluZENsdXN0ZXJzKFNNQ3NfY29tYmluZWQsIHJlc29sdXRpb24gPSAwLjEpXG5cbklkZW50cyhTTUNzX2NvbWJpbmVkKSA8LSBTTUNzX2NvbWJpbmVkJG9yaWcuaWRlbnQgXG5TTUNzX2NvbWJpbmVkIDwtIFJlbmFtZUlkZW50cyhTTUNzX2NvbWJpbmVkLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJ0NBX3NhbXBsZTEudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsJ0NBX3NhbXBsZTIudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsJ0NBX3NhbXBsZTMudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJzEnPSdjb3JvbmFyeSBhcnRlcmllcycsJzInPSdjb3JvbmFyeSBhcnRlcmllcycsJzMnPSdjb3JvbmFyeSBhcnRlcmllcycsJzQnPSdjb3JvbmFyeSBhcnRlcmllcycsJzUnPSdjb3JvbmFyeSBhcnRlcmllcycsJzYnPSdjb3JvbmFyeSBhcnRlcmllcycsJzcnPSdjb3JvbmFyeSBhcnRlcmllcycsJzgnPSdjb3JvbmFyeSBhcnRlcmllcycpXG5TTUNzX2NvbWJpbmVkJGNvbmRpdGlvbnMgPC0gSWRlbnRzKFNNQ3NfY29tYmluZWQpXG5cblxuRGltUGxvdChTTUNzX2NvbWJpbmVkLCByZWR1Y3Rpb24gPSBcInVtYXBcIiwgZ3JvdXAuYnkgPSBcImNvbmRpdGlvbnNcIilcbkRpbVBsb3QoU01Dc19jb21iaW5lZCwgcmVkdWN0aW9uID0gXCJ1bWFwXCIsIGxhYmVsID0gVFJVRSwgcmVwZWwgPSBUUlVFKVxuRmVhdHVyZVBsb3QoU01Dc19jb21iaW5lZCwgXCJETFg1XCIpXG5gYGAifQ== -->
+<pre class="r"><code>SMCs_combined &lt;- ScaleData(SMCs_combined, verbose = FALSE)
+SMCs_combined &lt;- RunPCA(SMCs_combined, npcs = 30, verbose = FALSE)
+SMCs_combined &lt;- RunUMAP(SMCs_combined, reduction = &quot;pca&quot;, dims = 1:30)
+
+SMCs_combined &lt;- FindNeighbors(SMCs_combined, reduction = &quot;pca&quot;, dims = 1:30)
+SMCs_combined &lt;- FindClusters(SMCs_combined, resolution = 0.1)
+
+Idents(SMCs_combined) &lt;- SMCs_combined$orig.ident 
+SMCs_combined &lt;- RenameIdents(SMCs_combined,
+                              &#39;CA_sample1.txt&#39;=&#39;carotid arteries&#39;,&#39;CA_sample2.txt&#39;=&#39;carotid arteries&#39;,&#39;CA_sample3.txt&#39;=&#39;carotid arteries&#39;,
+                               &#39;1&#39;=&#39;coronary arteries&#39;,&#39;2&#39;=&#39;coronary arteries&#39;,&#39;3&#39;=&#39;coronary arteries&#39;,&#39;4&#39;=&#39;coronary arteries&#39;,&#39;5&#39;=&#39;coronary arteries&#39;,&#39;6&#39;=&#39;coronary arteries&#39;,&#39;7&#39;=&#39;coronary arteries&#39;,&#39;8&#39;=&#39;coronary arteries&#39;)
+SMCs_combined$conditions &lt;- Idents(SMCs_combined)
+
+
+DimPlot(SMCs_combined, reduction = &quot;umap&quot;, group.by = &quot;conditions&quot;)
+DimPlot(SMCs_combined, reduction = &quot;umap&quot;, label = TRUE, repel = TRUE)
+FeaturePlot(SMCs_combined, &quot;DLX5&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YW1hdCA8LSBnZXRfZGF0YV90YWJsZShzdWJzZXQoU01Dc19jb21iaW5lZCxpZGVudCA9IFwiY2Fyb3RpZCBhcnRlcmllc1wiKSx0eXBlID0gXCJkYXRhXCIpXG4jIOS6jOWAvOWMluefqemYtVxuZGF0YW1hdFtkYXRhbWF0PjBdIDwtIDBcbmRhdGFtYXRbZGF0YW1hdDwwXSA8LSAxXG5cblxucGhlYXRtYXA6OnBoZWF0bWFwKGRhdGFtYXQsIGNvbG9yID0gYyhcIiNGRkZGRkZcIiwgXCJsaWdodGdyZXlcIiksXG4gICAgICAgIGJvcmRlcl9jb2xvciA9IE5BLCBjbHVzdGVyX3Jvd3MgPSBGQUxTRSwgY2x1c3Rlcl9jb2xzID0gRkFMU0UsXG4gICAgICAgIG1haW4gPSBcIkNDQSBkYXRhXCIsIHNob3dfcm93bmFtZXMgPSBGLHNob3dfY29sbmFtZXMgPSBGKVxuXG5cbmBgYCJ9 -->
+<pre class="r"><code>datamat &lt;- get_data_table(subset(SMCs_combined,ident = &quot;carotid arteries&quot;),type = &quot;data&quot;)
+# 二值化矩阵
+datamat[datamat&gt;0] &lt;- 0
+datamat[datamat&lt;0] &lt;- 1
+
+
+pheatmap::pheatmap(datamat, color = c(&quot;#FFFFFF&quot;, &quot;lightgrey&quot;),
+        border_color = NA, cluster_rows = FALSE, cluster_cols = FALSE,
+        main = &quot;CCA data&quot;, show_rownames = F,show_colnames = F)
+</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -228,8 +292,9 @@ pre code {
 <p>When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the <em>Preview</em> button or press <em>Ctrl+Shift+K</em> to preview the HTML file).</p>
 <p>The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike <em>Knit</em>, <em>Preview</em> does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.</p>
 <!-- rnb-text-end -->
+</div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKVGhpcyBpcyBhbiBbUiBNYXJrZG93bl0oaHR0cDovL3JtYXJrZG93bi5yc3R1ZGlvLmNvbSkgTm90ZWJvb2suIFdoZW4geW91IGV4ZWN1dGUgY29kZSB3aXRoaW4gdGhlIG5vdGVib29rLCB0aGUgcmVzdWx0cyBhcHBlYXIgYmVuZWF0aCB0aGUgY29kZS4gCgpUcnkgZXhlY3V0aW5nIHRoaXMgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpSdW4qIGJ1dHRvbiB3aXRoaW4gdGhlIGNodW5rIG9yIGJ5IHBsYWNpbmcgeW91ciBjdXJzb3IgaW5zaWRlIGl0IGFuZCBwcmVzc2luZyAqQ3RybCtTaGlmdCtFbnRlciouIAoKYGBge3J9CnBsb3QoY2FycykKYGBgCgpBZGQgYSBuZXcgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpJbnNlcnQgQ2h1bmsqIGJ1dHRvbiBvbiB0aGUgdG9vbGJhciBvciBieSBwcmVzc2luZyAqQ3RybCtBbHQrSSouCgpXaGVuIHlvdSBzYXZlIHRoZSBub3RlYm9vaywgYW4gSFRNTCBmaWxlIGNvbnRhaW5pbmcgdGhlIGNvZGUgYW5kIG91dHB1dCB3aWxsIGJlIHNhdmVkIGFsb25nc2lkZSBpdCAoY2xpY2sgdGhlICpQcmV2aWV3KiBidXR0b24gb3IgcHJlc3MgKkN0cmwrU2hpZnQrSyogdG8gcHJldmlldyB0aGUgSFRNTCBmaWxlKS4KClRoZSBwcmV2aWV3IHNob3dzIHlvdSBhIHJlbmRlcmVkIEhUTUwgY29weSBvZiB0aGUgY29udGVudHMgb2YgdGhlIGVkaXRvci4gQ29uc2VxdWVudGx5LCB1bmxpa2UgKktuaXQqLCAqUHJldmlldyogZG9lcyBub3QgcnVuIGFueSBSIGNvZGUgY2h1bmtzLiBJbnN0ZWFkLCB0aGUgb3V0cHV0IG9mIHRoZSBjaHVuayB3aGVuIGl0IHdhcyBsYXN0IHJ1biBpbiB0aGUgZWRpdG9yIGlzIGRpc3BsYXllZC4K</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKVGhpcyBpcyBhbiBbUiBNYXJrZG93bl0oaHR0cDovL3JtYXJrZG93bi5yc3R1ZGlvLmNvbSkgTm90ZWJvb2suIFdoZW4geW91IGV4ZWN1dGUgY29kZSB3aXRoaW4gdGhlIG5vdGVib29rLCB0aGUgcmVzdWx0cyBhcHBlYXIgYmVuZWF0aCB0aGUgY29kZS4gCgpUcnkgZXhlY3V0aW5nIHRoaXMgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpSdW4qIGJ1dHRvbiB3aXRoaW4gdGhlIGNodW5rIG9yIGJ5IHBsYWNpbmcgeW91ciBjdXJzb3IgaW5zaWRlIGl0IGFuZCBwcmVzc2luZyAqQ3RybCtTaGlmdCtFbnRlciouIAoKYGBge3J9CnNvdXJjZSgidGlhbmZlbmdSd3JhcHBlcnMuUiIpCmBgYAoKCiMjIOaVtOWQiOeul+azleWPr+iDveWHuueOsOi0n+WAvO+8jOi/kOihjFNDRU5JQ+aXtuiIjeW8g+S6hui/meS6m+W8guW4uOWAvApgYGB7cn0KI+aPkOWPllNNQ+e7huiDnuS6mue+pApTTUNzX2xpc3QgPC0gbGlzdChkczEsZHMwKQoKU01Dc19saXN0IDwtIGxhcHBseShYID0gU01Dc19saXN0LCBGVU4gPSBmdW5jdGlvbih4KSB7CiAgICB4IDwtIE5vcm1hbGl6ZURhdGEoeCkKICAgIHggPC0gRmluZFZhcmlhYmxlRmVhdHVyZXMoeCwgc2VsU01DdGlvbi5tZXRob2QgPSAidnN0IiwgbmZlYXR1cmVzID0gMjAwMCkKfSkKI+mcgOimgeWIhuaekOeahOW3ruW8guWfuuWboAppbnRfZmVhdHVyZXMgPC0gU2VsZWN0SW50ZWdyYXRpb25GZWF0dXJlcyhvYmplY3QubGlzdCA9IFNNQ3NfbGlzdCkKI+mAieaLqeWQiOW5tueahGFuY2hvcueJueW+gQppbnRfYW5jaG9ycyA8LSBGaW5kSW50ZWdyYXRpb25BbmNob3JzKG9iamVjdC5saXN0ID0gU01Dc19saXN0LCBhbmNob3IuZmVhdHVyZXMgPSBpbnRfZmVhdHVyZXMpCgoj5qC55o2uYW5jaG9y5ZCI5bm2ClNNQ3NfY29tYmluZWQgPC0gSW50ZWdyYXRlRGF0YShhbmNob3JzZXQgPSBpbnRfYW5jaG9ycykKCkRlZmF1bHRBc3NheShTTUNzX2NvbWJpbmVkKSA8LSAiaW50ZWdyYXRlZCIKcm0oIlNNQ3NfbGlzdCIsImludF9mZWF0dXJlcyIsImludF9hbmNob3JzIikKYGBgCgoKYGBge3J9ClNNQ3NfY29tYmluZWQgPC0gU2NhbGVEYXRhKFNNQ3NfY29tYmluZWQsIHZlcmJvc2UgPSBGQUxTRSkKU01Dc19jb21iaW5lZCA8LSBSdW5QQ0EoU01Dc19jb21iaW5lZCwgbnBjcyA9IDMwLCB2ZXJib3NlID0gRkFMU0UpClNNQ3NfY29tYmluZWQgPC0gUnVuVU1BUChTTUNzX2NvbWJpbmVkLCByZWR1Y3Rpb24gPSAicGNhIiwgZGltcyA9IDE6MzApCgpTTUNzX2NvbWJpbmVkIDwtIEZpbmROZWlnaGJvcnMoU01Dc19jb21iaW5lZCwgcmVkdWN0aW9uID0gInBjYSIsIGRpbXMgPSAxOjMwKQpTTUNzX2NvbWJpbmVkIDwtIEZpbmRDbHVzdGVycyhTTUNzX2NvbWJpbmVkLCByZXNvbHV0aW9uID0gMC4xKQoKSWRlbnRzKFNNQ3NfY29tYmluZWQpIDwtIFNNQ3NfY29tYmluZWQkb3JpZy5pZGVudCAKU01Dc19jb21iaW5lZCA8LSBSZW5hbWVJZGVudHMoU01Dc19jb21iaW5lZCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJ0NBX3NhbXBsZTEudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsJ0NBX3NhbXBsZTIudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsJ0NBX3NhbXBsZTMudHh0Jz0nY2Fyb3RpZCBhcnRlcmllcycsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAnMSc9J2Nvcm9uYXJ5IGFydGVyaWVzJywnMic9J2Nvcm9uYXJ5IGFydGVyaWVzJywnMyc9J2Nvcm9uYXJ5IGFydGVyaWVzJywnNCc9J2Nvcm9uYXJ5IGFydGVyaWVzJywnNSc9J2Nvcm9uYXJ5IGFydGVyaWVzJywnNic9J2Nvcm9uYXJ5IGFydGVyaWVzJywnNyc9J2Nvcm9uYXJ5IGFydGVyaWVzJywnOCc9J2Nvcm9uYXJ5IGFydGVyaWVzJykKU01Dc19jb21iaW5lZCRjb25kaXRpb25zIDwtIElkZW50cyhTTUNzX2NvbWJpbmVkKQoKCkRpbVBsb3QoU01Dc19jb21iaW5lZCwgcmVkdWN0aW9uID0gInVtYXAiLCBncm91cC5ieSA9ICJjb25kaXRpb25zIikKRGltUGxvdChTTUNzX2NvbWJpbmVkLCByZWR1Y3Rpb24gPSAidW1hcCIsIGxhYmVsID0gVFJVRSwgcmVwZWwgPSBUUlVFKQpGZWF0dXJlUGxvdChTTUNzX2NvbWJpbmVkLCAiRExYNSIpCmBgYAoKYGBge3J9CmRhdGFtYXQgPC0gZ2V0X2RhdGFfdGFibGUoc3Vic2V0KFNNQ3NfY29tYmluZWQsaWRlbnQgPSAiY2Fyb3RpZCBhcnRlcmllcyIpLHR5cGUgPSAiZGF0YSIpCiMg5LqM5YC85YyW55+p6Zi1CmRhdGFtYXRbZGF0YW1hdD4wXSA8LSAwCmRhdGFtYXRbZGF0YW1hdDwwXSA8LSAxCgoKcGhlYXRtYXA6OnBoZWF0bWFwKGRhdGFtYXQsIGNvbG9yID0gYygiI0ZGRkZGRiIsICJsaWdodGdyZXkiKSwKICAgICAgICBib3JkZXJfY29sb3IgPSBOQSwgY2x1c3Rlcl9yb3dzID0gRkFMU0UsIGNsdXN0ZXJfY29scyA9IEZBTFNFLAogICAgICAgIG1haW4gPSAiQ0NBIGRhdGEiLCBzaG93X3Jvd25hbWVzID0gRixzaG93X2NvbG5hbWVzID0gRikKCgpgYGAKCkFkZCBhIG5ldyBjaHVuayBieSBjbGlja2luZyB0aGUgKkluc2VydCBDaHVuayogYnV0dG9uIG9uIHRoZSB0b29sYmFyIG9yIGJ5IHByZXNzaW5nICpDdHJsK0FsdCtJKi4KCldoZW4geW91IHNhdmUgdGhlIG5vdGVib29rLCBhbiBIVE1MIGZpbGUgY29udGFpbmluZyB0aGUgY29kZSBhbmQgb3V0cHV0IHdpbGwgYmUgc2F2ZWQgYWxvbmdzaWRlIGl0IChjbGljayB0aGUgKlByZXZpZXcqIGJ1dHRvbiBvciBwcmVzcyAqQ3RybCtTaGlmdCtLKiB0byBwcmV2aWV3IHRoZSBIVE1MIGZpbGUpLgoKVGhlIHByZXZpZXcgc2hvd3MgeW91IGEgcmVuZGVyZWQgSFRNTCBjb3B5IG9mIHRoZSBjb250ZW50cyBvZiB0aGUgZWRpdG9yLiBDb25zZXF1ZW50bHksIHVubGlrZSAqS25pdCosICpQcmV2aWV3KiBkb2VzIG5vdCBydW4gYW55IFIgY29kZSBjaHVua3MuIEluc3RlYWQsIHRoZSBvdXRwdXQgb2YgdGhlIGNodW5rIHdoZW4gaXQgd2FzIGxhc3QgcnVuIGluIHRoZSBlZGl0b3IgaXMgZGlzcGxheWVkLgo=</div>
 
 
 
