@@ -47,7 +47,7 @@ data <- read.csv("./go_res.csv",row.names = 1,quote = "", check.names=FALSE)
 # 用于生成雷达图的最大最小值
 data=rbind(rep(15,5) , rep(-10,5) , data)
 
-
+aero_colors_list <- as.character(lapply(colors_list, paste0, "40")) # 透明化颜色
 colors_border <- colors_list[c(4,1,5)]
 colors_in <- aero_colors_list[c(4,1,5)]
 

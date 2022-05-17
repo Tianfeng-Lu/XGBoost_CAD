@@ -82,7 +82,7 @@ AC_test <- xgb.DMatrix(data = AC_test_data$data,label = AC_test_data$label)
 #     'eta':0.2,
 #     'max_depth':6,
 #     'subsample': 0.6}
-# nround = 200
+# nround = 100
 
 watchlist <- list(train = AC_train, eval = AC_test)
 xgb_param <- list(eta = 0.2, max_depth = 6, 

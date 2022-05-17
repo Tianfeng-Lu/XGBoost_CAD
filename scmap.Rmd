@@ -220,7 +220,7 @@ scmapCell_clusters <- scmapCell2Cluster(
 
 temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds2))
 Idents(ds2) <- temp
-ggsave("./scmap/scmap_ds2tods0.svg", device = svg, width = 6, height = 4, plot = umapplot(ds2))
+# ggsave("./scmap/scmap_ds2tods0.svg", device = svg, width = 6, height = 4, plot = umapplot(ds2))
 
 fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
         textposition = 'inside',
@@ -282,7 +282,7 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                      label.y = max(merge_expr$expr),
                       hide.ns = F)
 ggobj
-ggsave("./scmap/scmapsupds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
+ggsave("./scmap/scmapsupds0tods2.svg", device = svg, plot = ggobj, height = 3, width = 5)
 ```
 
 # ds0 project to ds2
@@ -681,7 +681,7 @@ ggobj <- ggplot(data, aes(x = variable, y = ARI, color=group)) + #
   scale_fill_manual(values = aero_colors_list) +
   theme(panel.grid = element_line(colour = NA)) +
   theme(legend.position="none") +
-  theme(axis.title = element_text(size = 20,color = "black"),
+狗狗如何找到家狗狗如何找到家  theme(axis.title = element_text(size = 20,color = "black"),
         axis.text = element_text(size = 20,color = "black"),
         axis.line = element_line(size = 1),
         axis.ticks = element_line(size = 1),

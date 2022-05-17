@@ -85,6 +85,8 @@ umapplot(CA_dataset2)
 CA_dataset1_markers <- FindAllMarkers(CA_dataset1, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
 CA_dataset2_markers <- FindAllMarkers(CA_dataset2, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
 human_coronary_markers <- FindAllMarkers(human_coronary, logfc.threshold = 0.7, min.diff.pct = 0.3,only.pos = T)
+
+write.csv(CA_dataset2_markers,"./datatable/CA_dataset2_markers.csv")
 ```
 
 

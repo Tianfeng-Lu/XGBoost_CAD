@@ -26,6 +26,12 @@ surfaceplot2("LUM",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
 ```{r}
 surfaceplot2("ACTA2",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
 ```
+### LUM
+```{r}
+sep = 0.3
+surfaceplot2("BGN",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
+```
+
 
 ```{r}
 surfaceplot2("FB_score1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep),z_height = 2)

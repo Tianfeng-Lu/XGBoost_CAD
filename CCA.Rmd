@@ -15,7 +15,7 @@ source("tianfengRwrappers.R")
 ## 整合算法可能出现负值，运行SCENIC时舍弃了这些异常值
 ```{r}
 #提取SMC细胞亚群
-SMCs_list <- list(ds1,ds0)
+SMCs_list <- list(ds0,ds2)
 
 SMCs_list <- lapply(X = SMCs_list, FUN = function(x) {
     x <- NormalizeData(x)
@@ -40,32 +40,53 @@ SMCs_combined <- RunPCA(SMCs_combined, npcs = 30, verbose = FALSE)
 SMCs_combined <- RunUMAP(SMCs_combined, reduction = "pca", dims = 1:30)
 
 SMCs_combined <- FindNeighbors(SMCs_combined, reduction = "pca", dims = 1:30)
-SMCs_combined <- FindClusters(SMCs_combined, resolution = 0.1)
+SMCs_combined <- FindClusters(SMCs_combined, resolution = 0.1) # resolution 取0.1 或 0.2
+umapplot(SMCs_combined)
 
-Idents(SMCs_combined) <- SMCs_combined$orig.ident 
-SMCs_combined <- RenameIdents(SMCs_combined,
-                              'CA_sample1.txt'='carotid arteries','CA_sample2.txt'='carotid arteries','CA_sample3.txt'='carotid arteries',
-                               '1'='coronary arteries','2'='coronary arteries','3'='coronary arteries','4'='coronary arteries','5'='coronary arteries','6'='coronary arteries','7'='coronary arteries','8'='coronary arteries')
-SMCs_combined$conditions <- Idents(SMCs_combined)
+SMCs_combined <- FindClusters(SMCs_combined, resolution = 0.2) # resolution 取0.1 或 0.2
+umapplot(SMCs_combined)
 
+umapplot(SMCs_combined, split.by = "conditions")
+# Idents(SMCs_combined) <- SMCs_combined$orig.ident 
+# # SMCs_combined <- RenameIdents(SMCs_combined,
+#                                '1'='coronary arteries','2'='coronary arteries',
+#                               '3'='coronary arteries','4'='coronary arteries',
+#                               '5'='coronary arteries','6'='coronary arteries',
+#                               '7'='coronary arteries','8'='coronary arteries',
+#                               'CA_sample1.txt'='carotid arteries',
+#                               'CA_sample2.txt'='carotid arteries','CA_sample3.txt'='carotid arteries',)
+# SMCs_combined$conditions <- Idents(SMCs_combined)
 
-DimPlot(SMCs_combined, reduction = "umap", group.by = "conditions")
-DimPlot(SMCs_combined, reduction = "umap", label = TRUE, repel = TRUE)
-FeaturePlot(SMCs_combined, "DLX5")
+# Idents(SMCs_combined) <- SMCs_combined$conditions
+# ds0_SMC <- merge(subset(SMCs_combined,ident = "NA"),subset(SMCs_combined,ident = "AC"))
+# ds0_SMC@reductions[["umap"]] <- SMCs_combined@reductions[["umap"]]
+
+multi_featureplot(c("DCN","LUM","MMP2","ACTA2"),SMCs_combined,labels = "",label = F,min.cutoff = 0)
+```
+
+## negative values
+```{r}
+Idents(SMCs_combined) <- SMCs_combined$seurat_clusters
+
+neg <- subset(SMCs_combined, CCL21<0 | APOD<0) #选择负值细胞  
+f("CCL21", neg, cols = c("#1E90FF", "lightgrey"), min.cutoff = -0.5, max.cutoff = 0)
+
+# multi_featureplot(c("DCN","LUM","MMP2","ACTA2"),SMCs_combined,labels = "", cols = c("blue", "lightgrey"), min.cutoff = -0.8, max.cutoff = 0)
+
+multi_featureplot(c("CCL21","APOD","PCOLCE2","CLDN5"), neg, labels = "", label = F,
+                  cols = c("#1E90FF", "lightgrey"), min.cutoff = -0.8, max.cutoff = 0)
 ```
 
 ```{r}
-datamat <- get_data_table(subset(SMCs_combined,ident = "carotid arteries"),type = "data")
+datamat <- get_data_table(subset(SMCs_combined), type = "data")
 # 二值化矩阵
 datamat[datamat>0] <- 0
 datamat[datamat<0] <- 1
 
 
 pheatmap::pheatmap(datamat, color = c("#FFFFFF", "#000000"),
-        border_color = NA, cluster_rows = FALSE, cluster_cols = FALSE,
+        border_color = NA, cluster_rows = T, cluster_cols = FALSE,
         main = "CCA data", show_rownames = F,show_colnames = F)
-
-
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

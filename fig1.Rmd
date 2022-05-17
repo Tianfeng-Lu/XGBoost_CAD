@@ -10,26 +10,30 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 ```{r}
 source("./tianfengRwrappers.R")
 CA_dataset2 <- readRDS("./CA_dataset2.rds")
+# CA_dataset2 <- RenameIdents(CA_dataset2,'EC' = 'Endothelial cell','FB' = 'Fibroblast')
 ```
 
 # umap图
-```{r}
+```{r fig.width = 6, fig.height = 5}
+ggsave("CA_dataset2umap.svg",plot = umapplot(CA_dataset2),device = svg, width = 6, height = 5)
+
+# fig.1
 Idents(CA_dataset2) <- CA_dataset2$conditions
 umap_AC <- umapplot(subset(CA_dataset2, idents = "AC"), group.by = "Classification1")
 umap_PA <- umapplot(subset(CA_dataset2, idents = "PA"), group.by = "Classification1")
+ggsave("umap_AC.svg",plot = umap_AC,device = svg, width = 7, height = 5)
+ggsave("umap_PA.svg",plot = umap_PA,device = svg, width = 7, height = 5)
 
-ilcox.test
-ggsave("umap_PA.svg",device = svg,width = 6,height = 4,plot = umap_PA)
-
-## fig.2
+## fig.2 
 ggsave("ds2_PAumap.svg",plot = umapplot(ds2_PA),device = svg, width = 6, height = 5)
 ggsave("ds2_ACumap.svg",plot = umapplot(ds2_AC),device = svg, width = 6, height = 5)
 ```
 
-# 分裂小提琴图
+# 小提琴图
 ```{r}
 Idents(CA_dataset2) <- CA_dataset2$Classification1
-vio <- violin_plot(c("MS4A1","PECAM1","FBLN1","CD68","TPSAB1","STMN1","NKG7","TAGLN","IL7R"),CA_dataset2) + theme( axis.text.y = element_text(size = 12,colour = "black"))
+vio <- violin_plot(c("MS4A1","PECAM1","FBLN1","CD68","TPSAB1","STMN1","NKG7","TAGLN","IL7R"), CA_dataset2) + 
+  theme(axis.text.y = element_text(size = 18,colour = "black"))
 ggsave("CAdataset2_markers_vio.svg",device = svg, plot = vio,width = 6, height = 6)
 ```
 
@@ -79,31 +83,29 @@ dev.off()
 ```
 
 # 比例
-```{r}
+```{r fig.width=8, fig.height= 6}
 Idents(CA_dataset2) <- CA_dataset2$conditions
-AC <- subset(CA_dataset2, idents = "AC")
-PA <- subset(CA_dataset2, idents = "PA")
-prop_mat <- cbind(prop.table(table(AC$Classification1)),prop.table(table(PA$Classification1)))
+prop_mat <- cbind(prop.table(table(subset(CA_dataset2, idents = "AC")$Classification1)),prop.table(table(subset(CA_dataset2, idents = "PA")$Classification1)))
 colnames(prop_mat) <- c("AC","PA")
-
 
 plot_data = melt(prop_mat)
 colnames(plot_data) = c('cell type','position','proportion')#修改每一列的名称
-
-ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
-  geom_bar(stat = 'identity', position = "dodge", width=0.5) + theme_bw()
+# 
+# ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
+#   geom_bar(stat = 'identity', position = "dodge", width=0.5) + theme_bw()
 
 prop_plot <- ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = position)) + 
-  geom_bar(stat = 'identity', position = "stack", width=0.5) + coord_cartesian(ylim = c(0,0.5))+
-  theme_bw() + scale_y_continuous(expand = c(0,0)) + theme(
-    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
-    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+  geom_bar(stat = 'identity', position = "stack", width = 0.5) + coord_cartesian(ylim = c(0,0.5))+
+  theme_bw() + scale_y_continuous(expand = c(0,0)) +  scale_fill_manual(values=c("#b1d6fb", "#fd9999"))+
+  theme(
+    axis.title.x = element_text(size = 15), axis.text.x = 
+      element_text(size = 15, hjust = 1, vjust = 1, angle = 45, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 15, colour = "black"),
     legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
 
-ggsave("CAdataset2_prop.svg",device = svg, plot = prop_plot,width = 8,height = 6)
+ggsave("CAdataset2_prop.svg",device = svg, plot = prop_plot,width = 6,height = 5)
 
 ```
-
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

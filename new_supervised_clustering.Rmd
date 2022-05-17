@@ -37,7 +37,7 @@ xgb_param <- list(eta = 0.2, max_depth = 6,
                   objective = "multi:softprob", eval_metric = 'mlogloss')
 
 bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
-
+saveRDS(bst_model, "ds2_model.rds")
 eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
 plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
   add_trace(type = "scatter", mode = "markers+lines", 
