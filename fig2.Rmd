@@ -52,18 +52,57 @@ ggsave("dd.png",device = png,height = 4,width = 6,plot= dd, bg = "transparent")
 ```
 
 #  addmodulescore
-```{r}
+```{r fig.height=3, fig.width=3}
 geneset <- read.table("SMC")
 ds2 <- AddModuleScore(ds2,features = geneset, name = 'SMC_score')
-f("SMC_score1", ds2, min.cutoff = 0)
+ds2_AC <- AddModuleScore(ds2_AC,features = geneset, name = 'SMC_score')
+ds2_PA <- AddModuleScore(ds2_PA,features = geneset, name = 'SMC_score')
+f("SMC_score1",label = F, ds2_AC) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+f("SMC_score1",label = F, ds2_PA) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
 # dataset1 <- AddModuleScore_UCell(dataset1,features = geneset, name = 'fibromyo_score')
 # f("V1fibromyo_score", dataset1)
 
 geneset <- read.table("FB")
 ds2 <- AddModuleScore(ds2,features = geneset, name = 'FB_score')
-f("FB_score1", ds2, min.cutoff = 0)
+ds2_AC <- AddModuleScore(ds2_AC,features = geneset, name = 'FB_score')
+ds2_PA <- AddModuleScore(ds2_PA,features = geneset, name = 'FB_score')
+f("FB_score1", label = F, ds2_AC) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
+f("FB_score1", label = F, ds2_PA) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
 ```
 
+```{r}
+df <- FetchData(ds2_AC,vars = c("FB_score1","SMC_score1","BGN","LUM","UMAP_1","UMAP_2"))
+# df <- arrange(df,FB_score1,by_group = F)
+data <- cbind(df,index = 1:nrow(df),cluster = Idents(ds2_AC))
+
+ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+
+ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+
+
+
+df <- FetchData(ds2_PA,vars = c("FB_score1","SMC_score1","BGN","LUM","UMAP_1","UMAP_2"))
+# df <- arrange(df,FB_score1,by_group = F)
+data <- cbind(df,index = 1:nrow(df),cluster = Idents(ds2_PA))
+
+ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+
+ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+
+
+
+
+ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = BGN),color = "#e2b398",alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + geom_point(aes(y=LUM),color = "#d1eba8",alpha = 1) + geom_smooth(aes(y = LUM), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5))
+
+```
+
+# GSVA
+```{r}
+GSVAres <- readRDS("GSVAres.rds")
+es <- data.frame(t(GSVAres),stringsAsFactors=F)  #可视化相关通路的在umap上聚集情况
+ds2 <- AddMetaData(ds2, es)
+f("CUI_TCF21_TARGETS_UP", label = F, ds2) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
+```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

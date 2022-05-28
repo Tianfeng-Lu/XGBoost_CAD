@@ -178,7 +178,7 @@ Idents(ds2) <- ds2$Classification1
 ds2 <- RenameIdents(ds2, 'SMC1' = 0, 'Fibromyocyte' = 1, 'Pericyte' = 2, 'Fibroblast' = 3, 'SMC2' = 4)
 
 ds2_data <- get_data_table(ds2, highvar = F, type = "data")
-ds2_label <- as.numeric(as.character(Idents(ds2)))
+ds2_label <- as.numeric(as.character(Idents(ds2))) 
 
 set.seed(7)
 index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
@@ -681,7 +681,7 @@ ggobj <- ggplot(data, aes(x = variable, y = ARI, color=group)) + #
   scale_fill_manual(values = aero_colors_list) +
   theme(panel.grid = element_line(colour = NA)) +
   theme(legend.position="none") +
-狗狗如何找到家狗狗如何找到家  theme(axis.title = element_text(size = 20,color = "black"),
+theme(axis.title = element_text(size = 20,color = "black"),
         axis.text = element_text(size = 20,color = "black"),
         axis.line = element_line(size = 1),
         axis.ticks = element_line(size = 1),

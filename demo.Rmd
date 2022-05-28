@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(caret)
+library(DALEX)
+```
+
+```{r}
+airquality<-as_tibble(airquality)
+airquality<-airquality%>%
+  drop_na()
+airquality
+id<-sample(2,nrow(airquality),replace = T,prob = c(0.7,0.3))
+airqualitytrain<-airquality[id == 1,]
+airqualitytest<-airquality[id == 2,]
+view(airquality)
+```
+
+```{r}
+ozone_rf<-train(Ozone~.,data = airqualitytrain,
+                method = "rf",
+                ntree = 20)
+ozone_glm<-train(Ozone~.,data = airqualitytrain,
+                 method = "glm")
+ozone_gbm<-train(Ozone~.,data = airqualitytrain,
+                 method = "gbm")
+```
+
+```{r}
+#模型解释
+explainer_rf<-explain(ozone_rf,label = "rf",
+                     data = airqualitytest,
+                     y = airqualitytest$Ozone)
+
+explainer_glm<-explain(ozone_glm,label = "glm",
+                       data = airqualitytest,
+                       y = airqualitytest$Ozone)
+explainer_gbm<-explain(ozone_gbm,label = "gbm",
+                      data = airqualitytest,
+                      y = airqualitytest$Ozone)
+```
+
+```{r}
+per_rf<-model_performance(explainer_rf)
+per_glm<-model_performance(explainer_glm)
+per_gbm<-model_performance(explainer_gbm)
+```
+
+```{r}
+#变量重要性分析
+importance_rf<-variable_importance(
+  explainer_rf,
+  loss_function = loss_root_mean_square
+)
+importance_glm<-variable_importance(
+  explainer_glm,
+  loss_function = loss_root_mean_square
+)
+importance_gbm<-variable_importance(
+  explainer_gbm,
+  loss_function = loss_root_mean_square
+)
+plot(importance_rf,importance_glm,importance_gbm)
+```
+```{r}
+modelStudio::modelStudio(explainer_rf,new_observation = airqualitytrain[1:2,],new_observation_y = airqualitytest$Ozone[1:2])
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

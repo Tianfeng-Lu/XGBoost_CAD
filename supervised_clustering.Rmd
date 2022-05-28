@@ -382,7 +382,10 @@ plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>%
 # 特征提取
 importance <- xgb.importance(colnames(ds2_train), model = bst_model)
 head(importance)
-xgb.ggplot.importance(head(importance,20), n_clusters = 1) + theme_minimal()
+xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()+theme(
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
+    legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
 
 multi_featureplot(head(importance,9)$Feature, ds2) 
 ds2_genes <- head(importance, 500) ##选择top500
@@ -390,7 +393,7 @@ ds2_genes <- head(importance, 500) ##选择top500
 write.csv(ds2_genes, "./datatable/ds2_features.csv", row.names = F)
 
 
-predict_ds2_test <- round(predict(bst_model, newdata = ds2_test)) %>% 
+predict_ds2_test <- round(predict(bst_model, newdata = ds2_test))
 #混淆矩阵
 ds2_confuse_matrix_test <- table(ds2_test_data$label, predict_ds2_test, dnn=c("true","pre"))
 ds2_confuse_matrix_test_prop <- prop.table(ds2_confuse_matrix_test, 1)
@@ -453,9 +456,6 @@ ds1$predict_ds1_test <- predict_ds1_test
 umapplot(ds1,group.by = "predict_ds1_test")
 Idents(ds1) <- ds1$seurat_clusters
 ```
-
-
-
 
 
 # 冠状动脉数据集
@@ -538,8 +538,6 @@ plot_ly(type = "sankey", orientation = "h",
 ```
 
 
-
-
 ```{r}
 # load("./init.RData")
 multi_featureplot(head(importance2,9)$Feature, ds2_AC)
@@ -548,7 +546,6 @@ multi_featureplot(head(importance2,9)$Feature, ds1)
 f("MYH11", ds2_AC)
 umapplot(ds0)
 ```
-
 
 # 淋巴细胞
 
@@ -727,10 +724,6 @@ func <- function(s, ident)
     return("unassigned")
 }
 
-```
-
-```{r}
-aero_colors_list <- as.character(lapply(colors_list, paste0, "A0")) #透明化颜色
 ```
 
 

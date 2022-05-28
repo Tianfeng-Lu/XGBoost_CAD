@@ -35,6 +35,10 @@ ggsave("dataset0_sampleinfo.svg",plot = umapplot(human_coronary, split.by = "sam
 
 ```
 
+```{r}
+ggsave("ds1.svg",plot = umapplot(ds1), device = svg, width = 6, height = 5)
+```
+
 
 # 附图：所有marker基因表达热图 show 表达量最高的top5
 ### logfc.threshold = 0.5, min.diff.pct = 0.3 pct.1>0.7
@@ -73,6 +77,7 @@ svg(paste0("human_coronary_supp","_markers.svg"), height = 10, width = 15)
 dhm2(human_coronary_markers$gene, human_coronary, genes_to_show$gene,"human_coronary_supp")
 dev.off()
 ```
+
 # 样本细胞比例
 ## dataset0 冠状动脉
 ```{r}
@@ -194,67 +199,9 @@ ggsave("ds0model_features.png", device = png, plot = ggobj, width = 8, height = 
 ```
 
 
-## scatter 比较 fig.3 DCN 和 LUM 在 FbM 中 sup vs unsup
-### ds2 -> ds0
-```{r}
-bst_model <- readRDS("ds2_model.rds")
-ds2_data <- get_data_table(ds2, highvar = F, type = "data")
-Idents(ds2) <- ds2$seurat_clusters
-Idents(ds0) <- ds0$seurat_clusters
-temp <- get_data_table(ds0, highvar = F, type = "data")
-ds0_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
-                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
-for(i in intersect(rownames(ds2_data), rownames(temp))){
-  ds0_data[i,] <- temp[i,]
-}
-rm(temp)
-ds0_label <- as.numeric(as.character(Idents(ds0)))
-colnames(ds0_data) <- NULL
-ds0_test_data <- list(data = t(as(ds0_data,"dgCMatrix")), label = ds0_label)
-ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
-
-#预测结果
-predict_ds0_test <- predict(bst_model, newdata = ds0_test)
-predict_prop_ds0 <- matrix(data=predict_ds0_test, nrow = length(levels(Idents(ds2))), 
-                           ncol = ncol(ds0), byrow = FALSE, 
-                           dimnames = list(levels(Idents(ds2)),colnames(ds0)))
-
-## 得到分群结果
-ds0_res <- apply(predict_prop_ds0,2,func,rownames(predict_prop_ds0))
-Idents(ds0) <- factor(ds0_res,levels = c(0:4))
-umapplot(ds0)
-ds0$supclustering <- Idents(ds0) #保存监督聚类结果
-```
-
-```{r}
-Idents(ds0) <- ds0$supclustering
-sup_ds0FBM <- subset(ds0, ident = "1")
-Idents(ds0) <- ds0$Classification1
-unsup_ds0FBM <- subset(ds0, ident = "Fibromyocyte")
-
-data1 <- FetchData(object = sup_ds0FBM, vars = c("LUM", "DCN"))
-rownames(data1) <-  NULL
-data1$group <- "sup"
-
-data2 <- FetchData(object = unsup_ds0FBM, vars = c("LUM", "DCN"))
-rownames(data2) <-  NULL
-data2$group <- "unsup"
-
-data <- rbind(data1,data2)
-
-ggplot(data, aes(x=LUM, y=DCN, color = group, group = group)) +
-  geom_point(size = 3) + 
-  geom_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
-
-```
 
 
-
+## SMC2
 ```{r}
 Idents(ds2) <- ds2$Classification1
 ds2_SMC2 <- subset(ds2, ident = "SMC2")
@@ -271,7 +218,7 @@ ggplot(data2, aes(x=ACTA2, y=TAGLN, color = group, group = group)) +
         axis.text = element_text(size = 20,color = "black"),
         axis.line = element_line(size = 1),
         axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
+        title = element_text(size = 20)) # 781 ACTA+ TAGLN+ in 792 ACTA+ 
 
 data2 <- FetchData(object = ds2_SMC2, vars = c("SOST", "DLX5"))
 rownames(data2) <-  NULL
@@ -285,7 +232,21 @@ ggplot(data2, aes(x=SOST, y=DLX5, color = group, group = group)) +
         axis.line = element_line(size = 1),
         axis.ticks = element_line(size = 1),
         title = element_text(size = 20))
+
+data2 <- FetchData(object = ds2_SMC2, vars = c("DLX6-AS1", "DLX5"))
+rownames(data2) <-  NULL
+data2$group <- "unsup"
+
+ggplot(data2, aes(x=`DLX6-AS1`, y=DLX5, color = group, group = group)) +
+  geom_point(size = 3,alpha=0.1) + 
+  geom_smooth(method=lm , color="red", fill="#69b3a2", formula = 'y~x', se=TRUE) +
+  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
+        axis.text = element_text(size = 20,color = "black"),
+        axis.line = element_line(size = 1),
+        axis.ticks = element_line(size = 1),
+        title = element_text(size = 20))
 ```
+
 ```{r}
 # dim(subset(ds2_SMC2, SOST>0))[2]
 
@@ -300,6 +261,7 @@ dim(subset(ds2_SMC2, `PRDM6`>1))[2]
 
 dim(subset(ds2_SMC2, `PRDM6`>1&DLX5>1))[2]
 ```
+
 ```{r}
 dim(subset(ds2_SMC2, ACTA2>1))[2]
 
@@ -326,6 +288,15 @@ plot <- dotplot(enrich.go, title = paste("Neural progenitor", "GO"), showCategor
                           axis.text = element_text(size= 16,color = "black"))
 ggsave("GO_Neural progenitor.svg",device = svg,height = 6,width = 10, plot = plot)
 ```
+
+## BMP
+
+```{r}
+Dotplot(c("BMPR1B","BMPR1A","BMPR2","ACVR2A"),ds0)
+Dotplot(c("BMPR1B","BMPR1A","BMPR2","ACVR2A"),ds1)
+Dotplot(c("BMPR1B","BMPR1A","BMPR2","ACVR2A"),ds2)
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

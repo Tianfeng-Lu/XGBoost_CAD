@@ -1,0 +1,65 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+#install ArchR
+```{r}
+ld_path <- paste(Sys.getenv("LD_LIBRARY_PATH"), "/usr/local/lib/", sep = ";")
+Sys.setenv(LD_LIBRARY_PATH = ld_path)
+BiocManager::install("DirichletMultinomial",version = "3.10")
+devtools::install_github("GreenleafLab/ArchR", ref="master", repos = BiocManager::repositories())
+```
+
+
+```{r}
+library(ArchR)
+addArchRGenome("hg38")
+source("tianfengRwrappers.R")
+```
+
+```{r}
+inputFiles <- c(
+"./ATACseq_data/scJfragments.tsv.gz","./ATACseq_data/scKfragments.tsv.gz","./ATACseq_data/scPfragments.tsv.gz","./ATACseq_data/scLfragments.tsv.gz")
+names(inputFiles)<-c("scJ","scK","scP","scL")
+
+obj1 <- CreateSeuratObject(
+  counts = Read10X_h5("./CA_GSE175621_ATAC/GSM5342787_scA_filtered_peak_bc_matrix.h5"),
+  genome = "hg38",
+  min.cells = 1
+)
+
+
+ArrowFiles <- createArrowFiles(
+  inputFiles = inputFiles,
+  sampleNames = names(inputFiles),
+  filterTSS = 4, #Dont set this too high because you can always increase later
+  filterFrags = 1000, 
+  addTileMat = TRUE,
+  force=FALSE,
+  addGeneScoreMat = TRUE
+)
+
+folders=list.files('./CA_GSE175621_ATAC')
+allList = lapply(folders,function(folder){ 
+  CreateSeuratObject(counts = Read10X(paste0('./dataset2/', folder),gene.column = 1), 
+                               project = folder,min.cells = 3)}
+  )
+#gene.column 和gene.tsv格式相关
+
+dataset2 <- merge(allList[[1]], 
+                 y = allList[-1], 
+                 add.cell.ids = folders, 
+                 project = "dataset2")
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

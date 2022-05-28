@@ -72,3 +72,8 @@ plots/
 *.svg
 fig2/fig2.tiff
 fig1/fig1.tiff
+/ArchRLogs/
+ATACseqdata/
+ArrowFiles/
+CAD/
+

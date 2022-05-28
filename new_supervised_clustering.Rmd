@@ -14,6 +14,12 @@ library(Matrix)
 library(mclust)
 library(tidyverse)
 ```
+```{r}
+ds2 <- readRDS("ds2.rds")
+Idents(ds2) <- ds2$seurat_clusters
+Idents(ds1) <- ds1$seurat_clusters
+Idents(ds0) <- ds0$seurat_clusters
+```
 
 
 ## 数值化
@@ -50,13 +56,14 @@ plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>%
 importance <- xgb.importance(colnames(ds2_train), model = bst_model)
 head(importance)
 xgb.ggplot.importance(head(importance,20),n_clusters = 1) + theme_bw()+theme(
-    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 8, colour = "black"),
+    axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 12, colour = "black"),
     axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12, colour = "black"),
     legend.text = element_text(size = 20), legend.title = element_blank(), panel.grid = element_blank())
 ```
 
 
 ## ds2 -> ds1
+### ARI = 0.1695417
 ```{r}
 Idents(ds1) <- ds1$seurat_clusters
 temp <- get_data_table(ds1, highvar = F, type = "data")
@@ -72,7 +79,6 @@ ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
 ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
 
 #预测结果
-
 predict_ds1_test <- predict(bst_model, newdata = ds1_test)
 
 predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = length(levels(Idents(ds2))), 
@@ -81,6 +87,8 @@ predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = length(levels(Idents(ds
 
 ## 得到分群结果
 ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
+adjustedRandIndex(ds1_res, ds1_test_data$label)
+
 Idents(ds1) <- factor(ds1_res,levels = c(0:4))
 umapplot(ds1)
 ds1$supclustering <- Idents(ds1) #保存监督聚类结果
@@ -120,7 +128,8 @@ ggobj <- ggplot() +
 ggsave("pre_ds1_umap.svg",device = svg,plot = ggobj,height = 10,width = 10)
 ```
 
-#ds2 -> ds0
+## ds2 -> ds0 
+### ARI = 0.6664657
 ```{r}
 Idents(ds0) <- ds0$seurat_clusters
 temp <- get_data_table(ds0, highvar = F, type = "data")
@@ -145,6 +154,7 @@ predict_prop_ds0 <- matrix(data=predict_ds0_test, nrow = length(levels(Idents(ds
 
 ## 得到分群结果
 ds0_res <- apply(predict_prop_ds0,2,func,rownames(predict_prop_ds0))
+adjustedRandIndex(ds0_res, ds0_test_data$label)
 Idents(ds0) <- factor(ds0_res,levels = c(0:4))
 umapplot(ds0)
 ds0$supclustering <- Idents(ds0) #保存监督聚类结果
@@ -324,7 +334,7 @@ ggsave("ds2_ACtoPA_umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
 
-## 在ds0上训练
+# 在ds0上训练
 ```{r}
 Idents(ds0) <- ds0$seurat_clusters
 ds0_data <- get_data_table(ds0, highvar = F, type = "data")
@@ -345,7 +355,7 @@ xgb_param <- list(eta = 0.2, max_depth = 6,
                   objective = "multi:softprob", eval_metric = 'mlogloss')
 
 bst_model <- xgb.train(xgb_param, ds0_train, nrounds = 100, watchlist, verbose = 0)
-
+saveRDS(bst_model, "ds0_model.rds")
 eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
 plot_ly(data.frame(eval_loss), x = c(1:100), y = eval_loss) %>% 
   add_trace(type = "scatter", mode = "markers+lines", 
@@ -365,6 +375,7 @@ write.csv(importance, "./datatable/ds0_features.csv", row.names = F)
 multi_featureplot(head(importance,9)$Feature, ds0, labels = "") 
 ```
 ## ds0 -> ds2
+### ARI = 0.4015002
 ```{r}
 Idents(ds2) <- ds2$seurat_clusters 
 temp <- get_data_table(ds2, highvar = F, type = "data")
@@ -389,6 +400,8 @@ predict_prop_ds2 <- matrix(data=predict_ds2_test, nrow = bst_model[["params"]][[
 
 ## 得到分群结果
 ds2_res <- apply(predict_prop_ds2,2,func,rownames(predict_prop_ds2))
+
+adjustedRandIndex(ds2_res, ds2_test_data$label)
 confuse_matrix1 <- table(ds2_test_data$label, ds2_res, dnn=c("true","pre"))
 
 sankey_plot(confuse_matrix1,0:5,0:4,session = "ds0tods2")
@@ -435,6 +448,7 @@ ggsave("ds0tods2umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
 ## ds0 -> ds1
+### ARI = 0.2524238
 ```{r}
 Idents(ds1) <- ds1$seurat_clusters
 temp <- get_data_table(ds1, highvar = F, type = "data")
@@ -459,9 +473,10 @@ predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = bst_model[["params"]][[
 
 ## 得到分群结果
 ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
+adjustedRandIndex(ds1_test_data$label, ds1_res)
 Idents(ds1) <- factor(ds1_res,levels = c(0:5))
 umapplot(ds1)
-
+# umapplot(ds1,group.by = "Classification1")
 confuse_matrix <- table(ds1_test_data$label, ds1_res, dnn=c("true","pre"))
 sankey_plot(confuse_matrix,c(0:4),c(0:4),session = "ds0tods1")
 ```
@@ -503,14 +518,306 @@ ggsave("ds0tods1umap.svg",device = svg,plot = ggobj,height = 8,width = 8)
 ```
 
 
-
-##lym
+## ARI 和聚类数的关系
 ```{r}
+lym_ds2 <- readRDS("./lym_ds2.rds")
+
+Idents(lym_ds2) <- lym_ds2$conditions
+lym_ds2_AC <- subset(lym_ds2, idents = "AC")
+lym_ds2_PA <- subset(lym_ds2, idents = "PA")
+
+set.seed(7)
+lym_PA_data <- get_data_table(lym_ds2_PA, highvar = T, type = "data")
+lym_AC_data <- get_data_table(lym_ds2_AC, highvar = T, type = "data")
+res <- list()
+
+```
+
+```{r}
+for(reso in seq(0.05,0.3,0.05))
+{
+  lym_ds2_AC <- lym_ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = reso)
+  lym_ds2_PA <- lym_ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = reso)
+
+  lym_PA_label <- as.numeric(as.character(Idents(lym_ds2_PA)))
+
+  index <- c(1:dim(lym_PA_data)[2]) %>% sample(ceiling(0.3*dim(lym_PA_data)[2]), replace = F, prob = NULL)
+  colnames(lym_PA_data) <- NULL
+  lym_PA_train_data <- list(data = t(as(lym_PA_data[,-index],"dgCMatrix")), label = lym_PA_label[-index])
+  lym_PA_test_data <- list(data = t(as(lym_PA_data[,index],"dgCMatrix")), label = lym_PA_label[index])
+  
+  lym_PA_train <- xgb.DMatrix(data = lym_PA_train_data$data,label = lym_PA_train_data$label)
+  lym_PA_test <- xgb.DMatrix(data = lym_PA_test_data$data,label = lym_PA_test_data$label)
+  
+  watchlist <- list(train = lym_PA_train, eval = lym_PA_test)
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents(lym_ds2_PA))),
+                    objective = "multi:softmax", eval_metric = 'mlogloss')
+  
+  bst_model <- xgb.train(xgb_param, lym_PA_train, nrounds = 100, watchlist, verbose = 0)
+  
+  
+  lym_AC_label <- as.numeric(as.character(Idents(lym_ds2_AC)))
+  colnames(lym_AC_data) <- NULL
+  lym_AC_test_data <- list(data = t(as(lym_AC_data,"dgCMatrix")), label = lym_AC_label)
+  lym_AC_test <- xgb.DMatrix(data = lym_AC_test_data$data,label = lym_AC_test_data$label)
+  predict_lym_AC_test <- round(predict(bst_model, newdata = lym_AC_test))
+  
+  res <- append(x = res,values = adjustedRandIndex(predict_lym_AC_test, lym_AC_test_data$label))
+}
+res
+```
+
+## ARI 和聚类数的关系
+```{r}
+ ds2 <- readRDS("./ds2.rds")
+
+Idents( ds2) <-  ds2$conditions
+ ds2_AC <- subset( ds2, idents = "AC")
+ ds2_PA <- subset( ds2, idents = "PA")
+
+set.seed(7)
+ PA_data <- get_data_table( ds2_PA, highvar = T, type = "data")
+ AC_data <- get_data_table( ds2_AC, highvar = T, type = "data")
+ds2_res <- list()
+
+```
+
+```{r}
+for(reso in seq(0.05,0.3,0.05))
+{
+   ds2_AC <-  ds2_AC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = reso)
+   ds2_PA <-  ds2_PA %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = reso)
+
+   PA_label <- as.numeric(as.character(Idents( ds2_PA)))
+
+  index <- c(1:dim( PA_data)[2]) %>% sample(ceiling(0.3*dim( PA_data)[2]), replace = F, prob = NULL)
+  colnames( PA_data) <- NULL
+   PA_train_data <- list(data = t(as( PA_data[,-index],"dgCMatrix")), label =  PA_label[-index])
+   PA_test_data <- list(data = t(as( PA_data[,index],"dgCMatrix")), label =  PA_label[index])
+  
+   PA_train <- xgb.DMatrix(data =  PA_train_data$data,label =  PA_train_data$label)
+   PA_test <- xgb.DMatrix(data =  PA_test_data$data,label =  PA_test_data$label)
+  
+  watchlist <- list(train =  PA_train, eval =  PA_test)
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents( ds2_PA))),
+                    objective = "multi:softmax", eval_metric = 'mlogloss')
+  
+  bst_model <- xgb.train(xgb_param,  PA_train, nrounds = 100, watchlist, verbose = 0)
+  
+  
+   AC_label <- as.numeric(as.character(Idents( ds2_AC)))
+  colnames( AC_data) <- NULL
+   AC_test_data <- list(data = t(as( AC_data,"dgCMatrix")), label =  AC_label)
+   AC_test <- xgb.DMatrix(data =  AC_test_data$data,label =  AC_test_data$label)
+  predict_AC_test <- round(predict(bst_model, newdata = AC_test))
+  
+  ds2_res <- append(x = ds2_res,values = adjustedRandIndex(predict_AC_test,  AC_test_data$label))
+}
+ds2_res
 
 ```
 
 
-## ARI 和聚类数的关系
+### 绘图
+```{r fig.width=4, fig.height=4}
+data <- data.frame(resolution = seq(0.05,0.3,0.05), lym_ARI = as.numeric(res), SMC_ARI = as.numeric(ds2_res))
+ # ggplot(data, aes(x=resolution, y=ARI)) +
+ #    geom_line(color="#e2a2ca50", size=2) +
+ #    geom_point(shape=21, color="#e2a2ca", fill="#e2a2ca", size=3) +
+ #    theme_classic() +
+ #    ggtitle("resolution-ARI") + xlim(0.1,1) +ylim(0,1)
+write.csv(data,"./datatable/reso-ARI.csv")
+plot_ly(data, x = ~resolution) %>% 
+  add_trace(y = ~lym_ARI, name = 'lym', mode = 'lines+markers',size = 4, markers = list(color = "#158aff"),
+            line = list(color = '#b1d6fb', width = 4), type = 'scatter') %>%
+  add_trace(y = ~SMC_ARI, name = 'SMC', mode = 'lines+markers',size = 4, markers = list(color = "#ff2121"), 
+            line = list(color = '#e2a2ca', width = 4), type = 'scatter')%>%
+  layout(xaxis = list(zerolinecolor = '#ffffff', zerolinewidth = 2, range = c(0, 0.32),
+                       gridcolor = 'ffff', dtick=0.05, title = "resolution"),
+         yaxis = list(zerolinecolor = '#ffffff', zerolinewidth = 2, range = c(0.2, 0.9),
+                       gridcolor = 'ffff', dtick=0.1,  title = "ARI")) %>%
+  layout(font = list(family = "Arial", size = 20, color = "black"))
+```
+
+
+
+# 解释性
+```{r}
+library(DALEX)
+library(modelStudio)
+source("tianfengRwrappers.R")
+ds2 <- readRDS("ds2.rds")
+Idents(ds2) <- ds2$Classification1
+ds2 <- RenameIdents(ds2, 'SMC1' = 0, 'Fibromyocyte' = 1, 'Pericyte' = 2, 'Fibroblast' = 3, 'SMC2' = 4)
+ds2_data <- get_data_table(ds2, highvar = T, type = "data")
+ds2_label <- as.numeric(as.character(Idents(ds2)))
+index <- c(1:dim(ds2_data)[2]) %>% sample(ceiling(0.3*dim(ds2_data)[2]), replace = F, prob = NULL)
+# colnames(ds2_data) <- NULL
+ds2_train_data <- list(data = t(as(ds2_data[,-index],"dgCMatrix")), label = ds2_label[-index])
+ds2_test_data <- list(data = t(as(ds2_data[,index],"dgCMatrix")), label = ds2_label[index])
+ds2_train <- xgb.DMatrix(data = ds2_train_data$data,label = ds2_train_data$label)
+ds2_test <- xgb.DMatrix(data = ds2_test_data$data,label = ds2_test_data$label)
+
+watchlist <- list(train = ds2_train, eval = ds2_test)
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+bst_model <- xgb.train(xgb_param, ds2_train, nrounds = 100, watchlist, verbose = 0)
+
+# saveRDS(bst_model,"reduced_ds2model.rds")
+
+```
+
+
+```{r}
+# 建立解释器
+explainer_xgb <- DALEX::explain(bst_model, data = ds2_train_data$data[1:200,], y = ds2_train_data$label[1:200], label = "XGBoost")
+
+# modelStudio::modelStudio(explainer = explainer_xgb, new_observation = ds2_train_data$data[1:2,] )
+p1 <- DALEX::variable_profile(explainer_xgb, variable = "ACKR1", type = "accumulated")
+plot(p1)
+p2 <- single_variable(explainer_xgb, rownames(ds2_data)[1:10], type = "pdp")
+plot(p2)
+# p3 <- variable_importance(explainer_xgb, variable =rownames(ds2_data)[1:10],loss_function = loss_root_mean_square)
+```
+
+```{r}
+reduced_ds2model <- readRDS("reduced_ds2model.rds")
+p1 <- xgb.plot.tree(feature_names = rownames(ds2_data), model = reduced_ds2model,render = F)
+DiagrammeR::render_graph(p1)
+saveRDS(p1,"ds2_tree.rds")
+```
+
+```{r}
+p2 <- xgb.ggplot.shap.summary(data = ds2_train_data$data, features = rownames(ds2_data)[1:10], model = reduced_ds2model)
+
+xgb.ggplot.deepness(model = reduced_ds2model, which = c("2x1", "max.depth", "med.depth", "med.weight"))
+
+shapvalues <- xgb.plot.shap(data = ds2_train_data$data, features = rownames(ds2_data)[1:10], model = reduced_ds2model,plot = F)
+```
+
+```{r}
+library(SHAPforxgboost)
+```
+
+
+```{r}
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                  subsample = 0.6,  num_class = length(table(Idents(ds2))),
+                  objective = "multi:softprob", eval_metric = 'mlogloss')
+
+reduced_ds2model <- xgboost::xgboost(
+  data = ds2_test_data$data, label = ds2_test_data$label,
+ params = xgb_param, nrounds = 100, verbose = FALSE)
+
+
+shap_contrib <- predict(reduced_ds2model, ds2_train_data$data, predcontrib = TRUE)
+shap_contrib <- data.frame(shap_contrib[[2]]) ##提取fbm对应的分类
+BIAS0 <- shap_contrib[, ncol(shap_contrib)][1]
+shap_contrib[,"BIAS"] <- NULL
+imp <- colMeans(abs(shap_contrib))
+mean_shap_score <- imp[order(imp, decreasing = T)]
+
+shap_values<- list(shap_score = shap_contrib, mean_shap_score = mean_shap_score, 
+    BIAS0 = BIAS0)
+
+# The ranked features by mean |SHAP|
+shap_values$mean_shap_score
+
+# To prepare the long-format data:
+shap_long <- shap.prep(shap_contrib = shap_contrib, X_train = ds2_train_data$data, top_n = 20)
+
+
+# is the same as: using given shap_contrib
+# shap_long <- shap.prep(shap_contrib = shap_values$shap_score, X_train = ds2_train_data$data)
+# (Notice that there will be a data.table warning from `melt.data.table` due to `dayint` coerced from
+# integer to double)
+
+
+# sometimes for a preview, you want to plot less data to make it faster using `dilute`
+shap.plot.summary(shap_long, x_bound  = 1.2, dilute = 30)
+
+## FB
+shap_contrib <- predict(reduced_ds2model, ds2_train_data$data, predcontrib = TRUE)
+shap_contrib <- data.frame(shap_contrib[[4]]) ##提取SMC1对应的分类
+BIAS0 <- shap_contrib[, ncol(shap_contrib)][1]
+shap_contrib[,"BIAS"] <- NULL
+imp <- colMeans(abs(shap_contrib))
+mean_shap_score <- imp[order(imp, decreasing = T)]
+
+shap_values<- list(shap_score = shap_contrib, mean_shap_score = mean_shap_score, 
+    BIAS0 = BIAS0)
+
+# To prepare the long-format data:
+shap_long <- shap.prep(shap_contrib = shap_contrib, X_train = ds2_train_data$data,top_n = 30)
+
+shap.plot.summary(shap_long, x_bound  = 1.2, dilute = 30)
+```
+
+```{r}
+plot_data <- shap.prep.stack.data(shap_contrib = shap_values$shap_score, top_n = 5, n_groups = 2)
+shap.plot.force_plot(plot_data, zoom_in_location = 500, y_parent_limit = c(-1,1))
+shap.plot.force_plot_bygroup(plot_data)
+shap.plot.force_plot(plot_data,zoom_in_location = 800)
+```
+```{r}
+shap.plot.dependence(data_long = shap_long, x= "LUM",
+                     y = "BGN", color_feature = "BGN")   
+```
+
+
+```{r}
+shap_int <- predict(reduced_ds2model, ds2_train_data$data, predinteraction = TRUE)
+
+shap.plot.dependence(data_long = shap_long,
+                           data_int = shap_int,
+                           x= "Column_WV",
+                           y = "AOT_Uncertainty", 
+                           color_feature = "AOT_Uncertainty")
+```
+
+
+```{r}
+data("iris")
+X1 = as.matrix(iris[,-5])
+mod1 = xgboost::xgboost(
+  data = X1, label = iris$Species, gamma = 0, eta = 1,
+  lambda = 0, nrounds = 1, verbose = FALSE)
+
+# shap.values(model, X_dataset) returns the SHAP
+# data matrix and ranked features by mean|SHAP|
+shap_values <- shap.values(xgb_model = mod1, X_train = X1)
+shap_values$mean_shap_score
+shap_values_iris <- shap_values$shap_score
+
+
+shap_long <- shap.prep(xgb_model = mod1, X_train = X1)
+```
+
+## confidence曲线
+```{r}
+bst_model <- readRDS("./reduced_ds2model.rds")
+#预测结果
+predict_ds2_test <- predict(bst_model, newdata = ds2_test)
+
+predict_prop_ds2 <- matrix(data=predict_ds2_test, nrow = length(levels(Idents(ds2))), 
+                           ncol = nrow(ds2_test_data$data), byrow = FALSE, 
+                           dimnames = list(levels(Idents(ds2)),rownames(ds2_test_data$data)))
+df <- data.frame(t(predict_prop_ds2))
+
+df <- arrange(df,X1,by_group = F)
+## 得到分群结果
+# ds2_res <- apply(predict_prop_ds2,2,func,rownames(predict_prop_ds2))
+
+
+df2 <- cbind(df,index = 1:nrow(df))
+ggplot(df2)+geom_point(aes(x=index,y = X1),color = "#e2b398",alpha = 1)+ geom_point(aes(x=index,y=X3),color = "#d1eba8",alpha = 1)+ theme_classic() + mytheme #FB与FBM分离
+
+ggplot(df2)+geom_point(aes(x=index,y = X1),color = "#e2b398",alpha = 1)+ geom_point(aes(x=index,y=X0),color = "#6dc0a6",alpha = 1)+ theme_classic() + mytheme #SMC与FBM
+```
+
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

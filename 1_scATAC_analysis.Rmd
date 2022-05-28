@@ -1,0 +1,242 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(ArchR) # version 
+set.seed(1)
+addArchRGenome("hg38")
+```
+
+# input data from 10x cellranger-atac output
+```{r}
+inputFiles <- c(
+"./ATACseqdata/scJfragments.tsv.gz","./ATACseqdata/scKfragments.tsv.gz","./ATACseqdata/scPfragments.tsv.gz","./ATACseqdata/scLfragments.tsv.gz")
+names(inputFiles)<-c("scJ","scK","scP","scL")
+```
+
+```{r}
+ArrowFiles <- createArrowFiles(
+  inputFiles = inputFiles,
+  sampleNames = names(inputFiles),
+  filterTSS = 4, #Dont set this too high because you can always increase later
+  filterFrags = 1000, 
+  addTileMat = TRUE,
+  force=FALSE,
+  addGeneScoreMat = TRUE
+)
+projCAD1 <- ArchRProject(
+  ArrowFiles = ArrowFiles, 
+  outputDirectory = "CAD",
+  copyArrows = TRUE #This is recommened so that if you modify the Arrow files you have an original copy for later usage.
+)
+
+# add doublet score
+projCAD1 <- addDoubletScores(
+  input = ArrowFiles,
+  k = 10, #Refers to how many cells near a "pseudo-doublet" to count.
+  knnMethod = "UMAP", #Refers to the embedding to use for nearest neighbor search.
+  LSIMethod = 1,
+  force=TRUE
+)
+
+
+projCAD1 <- filterDoublets(ArchRProj = projCAD1)
+```
+```{r}
+projCAD1 <- addIterativeLSI(ArchRProj = projCAD1, useMatrix = "TileMatrix", name = "IterativeLSI")
+projCAD1 <- addClusters(input = projCAD1, reducedDims = "IterativeLSI")
+projCAD1 <- addUMAP(ArchRProj = projCAD1, reducedDims = "IterativeLSI")
+p1 <- plotEmbedding(ArchRProj = projCAD1, colorBy = "cellColData", name = "Sample", embedding = "UMAP")
+p2 <- plotEmbedding(ArchRProj = projCAD1, colorBy = "cellColData", name = "Clusters", embedding = "UMAP")
+p1
+p2
+```
+ 
+
+```{r}
+projCAD1 <- addImputeWeights(projCAD1)
+p <- plotBrowserTrack(
+    ArchRProj = projCAD1, 
+    groupBy = "Clusters", 
+    geneSymbol = markerGenes, 
+    upstream = 50000,
+    downstream = 50000
+)
+
+grid::grid.newpage()
+grid::grid.draw(p$TCF21)
+```
+
+
+
+
+---
+# QC
+```{r}
+doubScores <- addDoubletScores(
+  input = ArrowFiles,
+  k = 10, #Refers to how many cells near a "pseudo-doublet" to count.
+  knnMethod = "UMAP", #Refers to the embedding to use for nearest neighbor search.
+  LSIMethod = 1,
+  force=TRUE
+)
+
+# basic QC 
+proj_CAD_1 <- projCAD1
+p <- ggPoint(
+    x = df[,1], 
+    y = df[,2], 
+    colorDensity = TRUE,
+    continuousSet = "sambaNight",
+    xlabel = "Log10 Unique Fragments",
+    ylabel = "TSS Enrichment",
+    xlim = c(log10(500), quantile(df[,1], probs = 0.99)),
+    ylim = c(0, quantile(df[,2], probs = 0.99))
+) + geom_hline(yintercept = 4, lty = "dashed") + geom_vline(xintercept = 3, lty = "dashed")
+plotPDF(p, name = "TSS-vs-Frags.pdf", ArchRProj = proj_CAD_1, addDOC = FALSE)
+
+p1 <- plotGroups(
+    ArchRProj = proj_CAD_1, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "TSSEnrichment",
+    plotAs = "ridges"
+   )
+p2 <- plotGroups(
+    ArchRProj = proj_CAD_1, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "TSSEnrichment",
+    plotAs = "violin",
+    alpha = 0.4,
+    addBoxPlot = TRUE
+   )
+p3 <- plotGroups(
+    ArchRProj = proj_CAD_1, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "log10(nFrags)",
+    plotAs = "ridges"
+   )
+p4 <- plotGroups(
+    ArchRProj = proj_CAD_1, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "log10(nFrags)",
+    plotAs = "violin",
+    alpha = 0.4,
+    addBoxPlot = TRUE
+   )
+plotPDF(p1,p2,p3,p4, name = "QC-Sample-Statistics.pdf", ArchRProj = proj_CAD_1, addDOC = FALSE, width = 4, height = 4)
+
+p1 <- plotFragmentSizes(ArchRProj = proj_CAD_1)
+p2 <- plotTSSEnrichment(ArchRProj = proj_CAD_1)
+plotPDF(p1,p2, name = "QC-Sample-FragSizes-TSSProfile.pdf", ArchRProj = proj_CAD_1, addDOC = FALSE, width = 5, height = 5)
+
+```
+```{r}
+proj_CAD_1 <- addDoubletScores(
+  input = proj_CAD_1,
+  k = 10, #Refers to how many cells near a "pseudo-doublet" to count.
+  knnMethod = "UMAP", #Refers to the embedding to use for nearest neighbor search.
+  LSIMethod = 1,
+  force=TRUE
+)
+```
+
+
+
+
+
+```{r}
+p <- ggPoint(
+    x = df2[,"log10(nFrags)"], 
+    y = df2[,"TSSEnrichment"], 
+    colorDensity = TRUE,
+    continuousSet = "sambaNight",
+    xlabel = "Log10 Unique Fragments",
+    ylabel = "TSS Enrichment",
+    xlim = c(3, quantile(df2[,"log10(nFrags)"], probs = 0.99)),
+    ylim = c(4, quantile(df2[,"TSSEnrichment"], probs = 0.99))
+) + geom_hline(yintercept = 7, lty = "dashed") + geom_vline(xintercept = 4, lty = "dashed")
+plotPDF(p, name = "TSS-vs-Frags_cutoff.pdf", ArchRProj = proj_CAD_2, addDOC = FALSE)
+
+
+# filter cells
+idxPass <- which(proj_CAD_1$TSSEnrichment >= 7 & proj_CAD_1$nFrags >= 10000)
+proj_CAD_2 <- filterDoublets(proj_CAD_1,filterRatio=1.5)
+df2 <- getCellColData(proj_CAD_2,select = c("log10(nFrags)", "TSSEnrichment"))
+cellsPass <- proj_CAD_2$cellNames[idxPass]
+proj_CAD_2 <- proj_CAD_2[cellsPass, ]
+
+# dimensional reduction
+proj_CAD_2 <- addIterativeLSI(
+    ArchRProj = proj_CAD_2,
+    useMatrix = "TileMatrix", 
+    name = "IterativeLSI", 
+    iterations = 2, 
+    clusterParams = list( #See Seurat::FindClusters
+        resolution = c(0.2), 
+        sampleCells = 10000, 
+        n.start = 10
+    ), 
+    varFeatures = 25000, 
+    dimsToUse = 1:30,
+    seed=1,force=T
+)
+
+# basic clustering 
+proj_CAD_2 <- addClusters(
+    input = proj_CAD_2,
+    reducedDims = "IterativeLSI",
+    method = "Seurat",
+    name = "Clusters",
+    resolution = 0.8,
+    force=T,seed=1
+)
+
+
+# UMAP embedding
+proj_CAD_2 <- addUMAP(
+    ArchRProj = proj_CAD_2, 
+    reducedDims = "IterativeLSI", 
+    name = "UMAP", 
+    nNeighbors = 30, 
+    minDist = 0.5, 
+    metric = "cosine",force=T
+)
+
+p1 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "Sample", embedding = "UMAP")
+p2 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "Clusters", embedding = "UMAP")
+plotPDF(p1,p2, name = "Plot-UMAP-Sample-Clusters_LSI.pdf", ArchRProj = proj_CAD_2, addDOC = FALSE, width = 5, height = 5)
+
+# QC score projected on UMAP
+p1 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "DoubletEnrichment", embedding = "UMAP")
+p2 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "DoubletScore", embedding = "UMAP")
+p3 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "PromoterRatio", embedding = "UMAP")
+p4 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "NucleosomeRatio", embedding = "UMAP")
+p5 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "TSSEnrichment", embedding = "UMAP")
+p6 <- plotEmbedding(ArchRProj = proj_CAD_2, colorBy = "cellColData", name = "nFrags", embedding = "UMAP")
+plotPDF(p1,p2,p3,p4,p5,p6, name = "Plot-UMAP-Sample-QC_LSI.pdf", ArchRProj = proj_CAD_2, addDOC = FALSE, width = 5, height = 5)
+
+```
+```{r}
+p <- plotBrowserTrack(
+    ArchRProj = proj_CAD_2, 
+    groupBy = "Clusters",
+    upstream = 5000,
+    downstream = 5000
+)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

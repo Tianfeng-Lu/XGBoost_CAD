@@ -21,20 +21,31 @@ umapplot(CA_dataset2)
 ```
 
 ```{r}
-Idents(CA_dataset2) <- CA_dataset2$Classification1
-CA_dataset2 <- FindSubCluster(CA_dataset2, cluster = 'SMC', graph.name = 'SCT_snn',resolution = 0.15 )
-Idents(CA_dataset2) <- CA_dataset2$sub.cluster
+EC_SMC <- subset(CA_dataset2, idents = c("Endothelial cell"))
 
-CA_dataset2 <- RenameIdents(CA_dataset2, "Mod_SMC"="Fibroblast", "SMC_0"="SMC1","SMC_1"="Fibromyocyte",
-                   "SMC_2"="Pericyte","SMC_3"="SMC2")
-umapplot(CA_dataset2)
-f("DLX6-AS1",CA_dataset2)
+EC_SMC <- EC_SMC %>% FindNeighbors(dims = 1:20) %>% RunUMAP(dims = 1:20) %>% 
+  FindClusters(resolution = 0.1)
+
+umapplot(EC_SMC)
+EC_SMC <- RenameIdents(EC_SMC,'0' = 'EC0','1' = 'EC1','2' = 'EC2')
+Dotplot(c("BMP1","BMP2"),EC_SMC)
+
+EC_SMC <- merge(EC_SMC, ds2)
+EC_SMC$Classification2 <- Idents(EC_SMC)
+EC_SMC <- EC_SMC %>% PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+  RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20)
+
+f("ACVR2A",EC_SMC)
+umapplot(EC_SMC)
+saveRDS(EC_SMC,"EC_SMC.rds")
 ```
 
 # CellChat
 ## 配体-受体+辅因子
 ```{r}
-cor <- createCellChat(CA_dataset2)
+cor <- createCellChat(EC_SMC)
 cellchatDB <- CellChatDB.human
 
 showDatabaseCategory(cellchatDB)
@@ -45,38 +56,38 @@ cor@DB <- cellchatDB
 
 #节省计算成本
 cor <- subsetData(cor)
-
 cor <- identifyOverExpressedGenes(cor)
 cor <- identifyOverExpressedInteractions(cor)
-
 #使用蛋白质互作网络，根据基因间相互关系补充表达量
-cor <- projectData(cor, PPI.human)
+# cor <- projectData(cor, PPI.human)
 
+computeAveExpr(cor, features = c("BMP2","BMP4","BMP6","BMPR1B","BMPR1A","BMPR2","ACVR2A"), type =  "truncatedMean", trim = 0.05)
 #推断细胞间通信网络，不要使用并行计算！
-cor <- computeCommunProb(cor)
+cor <- computeCommunProb(cor, type = "truncatedMean", trim = 0.05)
 #若细胞群中只有少数细胞出现联系(<10个)，则过滤掉它们
-cor <- filterCommunication(cor,min.cells = 10)
+cor <- filterCommunication(cor, min.cells = 10)
 
 #提取表达网络矩阵
-df.net <- subsetCommunication(cor)
-#df.net <- subsetCommunication(cor,source.use = c(5), target.use = c(4), signaling = c("WNT")) #指定分析的通路和细胞类群
+# df.net <- subsetCommunication(cor)
+df.net <- subsetCommunication(cor,signaling = c("BMP")) #指定分析的通路和细胞类群
 
 #推断信号通路
 cor <- computeCommunProbPathway(cor)
 
 #合并通信网络数据
 cor <- aggregateNet(cor)
-saveRDS(cor,"CA2_cellchat.rds")
+saveRDS(cor,"EC_SMC_cellchat.rds")
 ```
+
 ```{r}
-write.csv(df.net,"./datatable/cellchat_res.csv", row.names = F)
+write.csv(df.net,"./datatable/EC_SMC_cellchat_res.csv", row.names = F)
 ```
 
 
 
 ## cellchat可视化
 ```{r,fig.height=6,fig.width=6}
-cor <- readRDS("CA2_cellchat.rds")
+cor <- readRDS("EC_SMC_cellchat.rds")
 
 # cor@idents <- plyr::revalue(cor@idents, c("Mod_SMC"="Fibroblast", "SMC_0"="SMC1","SMC_1"="Fibromyocyte",
 #                    "SMC_2"="Pericyte","SMC_3"="SMC2"))
@@ -96,22 +107,20 @@ for (i in 1:nrow(mat)) {
 
 # pheatmap(mat, display_numbers = FALSE, number_color ="black", cluster_rows = FALSE, 
          # cluster_cols = FALSE, color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(400), border_color = NA)
-table(cor@idents)
+
 ```
 
 ```{r,fig.height=6,fig.width=6}
-netVisual_chord_gene(cor, sources.use = c(4), targets.use = c(1:12), lab.cex = 0.5, legend.pos.y = 30)
+netVisual_chord_gene(cor, sources.use = c(4), targets.use = c(2:9), lab.cex = 0.5, legend.pos.y = 30,thresh = 0.001)
 
-netVisual_chord_gene(cor, sources.use = c(1:12), targets.use = c(4), lab.cex = 0.5, legend.pos.y = 30)
+netVisual_chord_gene(cor, sources.use = c(4), targets.use = c(9), lab.cex = 0.5, legend.pos.y = 30, thresh = 0.001)
 ```
 
 
 ```{r,fig.height=6,fig.width=6}
 #指定pathway
-pathways.show <- c("TGFb") #SMC2
-# Hierarchy plot
-vertex.receiver = c(2,3,6,7,13) # a numeric vector. 
-netVisual_aggregate(cor, signaling = pathways.show, layout = "hierarchy", vertex.receiver = vertex.receiver)
+pathways.show <- c("BMP") 
+
 netVisual_aggregate(cor, signaling = pathways.show, layout = "circle")
 # netVisual_aggregate(cor, signaling = pathways.show, layout = "chord")
 
@@ -120,30 +129,27 @@ netVisual_heatmap(cor, signaling = pathways.show, color.heatmap = c("#f1f1f1", "
 ```
 
 
-```{r,fig.height=6,fig.width=6}
+```{r,fig.height=4,fig.width=4}
 #可视化单个配体受体对的影响
 netAnalysis_contribution(cor, signaling = pathways.show)
-pairLR.TNF <- extractEnrichedLR(cor, signaling = pathways.show, geneLR.return = FALSE)
-LR.show <- pairLR.TNF[1,] # show one ligand-receptor pair TNF12_CXCR4
-# Hierarchy plot
-
-netVisual_individual(cor, signaling = pathways.show,layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = vertex.receiver)
+pairLR.BMP <- extractEnrichedLR(cor, signaling = pathways.show, geneLR.return = FALSE,thresh = 0.001)
+LR.show <- pairLR.BMP[8,] # show one ligand-receptor pair BMP2_BMPR1B
+netVisual_individual(cor, signaling = pathways.show, layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = c(5:9))
 netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "circle")
-netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "chord")
+# netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "chord")
 
+LR.show <- pairLR.BMP[2,] # show one ligand-receptor pair BMP2_BMPR1B
+netVisual_individual(cor, signaling = pathways.show, layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = c(5:9))
 
-
-# LR.show <- pairLR.TNF[4,] # show one ligand-receptor pair TNF12_CXCR4
 # Hierarchy plot
 netVisual_individual(cor, signaling = pathways.show,layout = "hierarchy",  pairLR.use = LR.show, vertex.receiver = vertex.receiver)
 netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "circle")
 netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layout = "chord")
 
+LR_show <- data.frame(interaction_name = pairLR.BMP[c(2,4,6,8),]) #展示BMP作为配体
 
-netVisual_bubble(cor, sources.use = 8, targets.use = c(2,3,6,7,13), remove.isolate = FALSE) #T_cell2 作为source
-# netVisual_bubble(cor, sources.use = 4, targets.use = c(1:7), remove.isolate = FALSE) #stromal 作为source
+netVisual_bubble(cor, sources.use = 4, targets.use = c(5:9), pairLR.use = LR_show, remove.isolate = F) #EC2 target
 
-netVisual_bubble(cor, sources.use = 5, targets.use = c(2,3,6,7,13), signaling = c("TNF"), remove.isolate = FALSE)
 ```
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
