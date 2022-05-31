@@ -225,8 +225,8 @@ pre code {
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<div id="读取结果" class="section level1">
-<h1>读取结果</h1>
+<div id="dataload" class="section level1">
+<h1>dataload</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaHVtYW5fY29yb25hcnkgPC0gcmVhZFJEUyhcImh1bWFuX2Nvcm9uYXJ5LnJkc1wiKVxuQ0FfZGF0YXNldDEgPC0gcmVhZFJEUyhcIkNBX2RhdGFzZXQxLnJkc1wiKVxuQ0FfZGF0YXNldDIgPC0gcmVhZFJEUyhcIkNBX2RhdGFzZXQyLnJkc1wiKSAj5bey57uP57uP6L+H5YiG57uE5aSE55CG5LqGXG5gYGAifQ== -->
@@ -248,13 +248,8 @@ multi_featureplot(c(&quot;ACKR1&quot;,&quot;PLVAP&quot;,&quot;ITGA6&quot;,&quot;
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB0YWJsZShDQV9kYXRhc2V0MiRzYW1wbGUpXG5cbiMg5YWz5rOoY2x1c3RlciAzLTYgRUNcbiMgY2x1c3RlciA3IOWfuui0qOe7huiDnlxuXG5tdWx0aV9mZWF0dXJlcGxvdChjKFwiTFlaXCIsXCJQVFBSQ1wiLFwiQ0Q2OVwiLFwiRVBDQU1cIixcIkNESDFcIixcIlBER0ZSQlwiLFwiQ09MMUEyXCIsXCJQRUNBTTFcIixcIkNMRE41XCIpLENBX2RhdGFzZXQyKVxuXG5Eb3RwbG90KGMoXCJMVU1cIixcIk1NUDJcIixcIk1HUFwiLFwiRENOXCIsXCJNWUgxMVwiLFwiQUNUQTJcIixcIkNOTjFcIixcIlRBR0xOXCIpLENBX2RhdGFzZXQyKSAjY2x1c3RlciA3IOe7huiDnuWPr+S7peiiq+iupOS4uuaYr21vZHVsYXRlZCBTTUNzXG5DQV9kYXRhc2V0MiA8LSBBZGRNb2R1bGVTY29yZShDQV9kYXRhc2V0MixsaXN0KGMoXCJMVU1cIixcIk1NUDJcIixcIk1HUFwiLFwiRENOXCIpKSlcbkNBX2RhdGFzZXQyIDwtIEFkZE1vZHVsZVNjb3JlKENBX2RhdGFzZXQyLGxpc3QoYyhcIk1ZSDExXCIsXCJBQ1RBMlwiLFwiQ05OMVwiLFwiVEFHTE5cIikpKVxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIkNsdXN0ZXIxXCIsXCJMVU1cIixcIkFDVEEyXCIsXCJUQUdMTlwiKSxDQV9kYXRhc2V0Milcbm11bHRpX2ZlYXR1cmVwbG90KGMoXCJNTVAyXCIsXCJHSkE0XCIsXCJQRUNBTTFcIixcIkFDS1IxXCIpLCBDQV9kYXRhc2V0Milcbm11bHRpX2ZlYXR1cmVwbG90KGMoXCJNTVAyXCIsXCJHSkE0XCIsXCJQRUNBTTFcIixcIkFDS1IxXCIpLCBodW1hbl9jb3JvbmFyeSlcblxuYGBgIn0= -->
-<pre class="r"><code># table(CA_dataset2$sample)
-
-# 关注cluster 3-6 EC
-# cluster 7 基质细胞
-
-multi_featureplot(c(&quot;LYZ&quot;,&quot;PTPRC&quot;,&quot;CD69&quot;,&quot;EPCAM&quot;,&quot;CDH1&quot;,&quot;PDGFRB&quot;,&quot;COL1A2&quot;,&quot;PECAM1&quot;,&quot;CLDN5&quot;),CA_dataset2)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIkxZWlwiLFwiUFRQUkNcIixcIkNENjlcIixcIkVQQ0FNXCIsXCJDREgxXCIsXCJQREdGUkJcIixcIkNPTDFBMlwiLFwiUEVDQU0xXCIsXCJDTERONVwiKSxDQV9kYXRhc2V0MilcblxuRG90cGxvdChjKFwiTFVNXCIsXCJNTVAyXCIsXCJNR1BcIixcIkRDTlwiLFwiTVlIMTFcIixcIkFDVEEyXCIsXCJDTk4xXCIsXCJUQUdMTlwiKSxDQV9kYXRhc2V0MikgI2NsdXN0ZXIgNyDnu4bog57lj6/ku6XooqvorqTkuLrmmK9tb2R1bGF0ZWQgU01Dc1xuQ0FfZGF0YXNldDIgPC0gQWRkTW9kdWxlU2NvcmUoQ0FfZGF0YXNldDIsbGlzdChjKFwiTFVNXCIsXCJNTVAyXCIsXCJNR1BcIixcIkRDTlwiKSkpXG5DQV9kYXRhc2V0MiA8LSBBZGRNb2R1bGVTY29yZShDQV9kYXRhc2V0MixsaXN0KGMoXCJNWUgxMVwiLFwiQUNUQTJcIixcIkNOTjFcIixcIlRBR0xOXCIpKSlcbm11bHRpX2ZlYXR1cmVwbG90KGMoXCJDbHVzdGVyMVwiLFwiTFVNXCIsXCJBQ1RBMlwiLFwiVEFHTE5cIiksQ0FfZGF0YXNldDIpXG5tdWx0aV9mZWF0dXJlcGxvdChjKFwiTU1QMlwiLFwiR0pBNFwiLFwiUEVDQU0xXCIsXCJBQ0tSMVwiKSwgQ0FfZGF0YXNldDIpXG5tdWx0aV9mZWF0dXJlcGxvdChjKFwiTU1QMlwiLFwiR0pBNFwiLFwiUEVDQU0xXCIsXCJBQ0tSMVwiKSwgaHVtYW5fY29yb25hcnkpXG5cbmBgYCJ9 -->
+<pre class="r"><code>multi_featureplot(c(&quot;LYZ&quot;,&quot;PTPRC&quot;,&quot;CD69&quot;,&quot;EPCAM&quot;,&quot;CDH1&quot;,&quot;PDGFRB&quot;,&quot;COL1A2&quot;,&quot;PECAM1&quot;,&quot;CLDN5&quot;),CA_dataset2)
 
 Dotplot(c(&quot;LUM&quot;,&quot;MMP2&quot;,&quot;MGP&quot;,&quot;DCN&quot;,&quot;MYH11&quot;,&quot;ACTA2&quot;,&quot;CNN1&quot;,&quot;TAGLN&quot;),CA_dataset2) #cluster 7 细胞可以被认为是modulated SMCs
 CA_dataset2 &lt;- AddModuleScore(CA_dataset2,list(c(&quot;LUM&quot;,&quot;MMP2&quot;,&quot;MGP&quot;,&quot;DCN&quot;)))
@@ -272,7 +267,7 @@ multi_featureplot(c(&quot;MMP2&quot;,&quot;GJA4&quot;,&quot;PECAM1&quot;,&quot;A
 <h1>基质细胞分类</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIkxZWlwiLFwiUFRQUkNcIixcIkNENjlcIixcIlBER0ZSQlwiLFwiQ09MMUEyXCIsXCJQRUNBTTFcIixcIkNMRE41XCIpLCBDQV9kYXRhc2V0MilcbiMgbXVsdGlfZmVhdHVyZXBsb3QoYyhcIkFDVEEyXCIsXCJGTjFcIiksIENBX2RhdGFzZXQyKVxudW1hcHBsb3QoQ0FfZGF0YXNldDIpXG5seW1fZHMyIDwtIHN1YnNldChDQV9kYXRhc2V0MiwgaWRlbnRzID0gYygnMCcsJzQnLCc5JykpICAjaHVtYW5fY29yIOmAieaLqTAgMyA0ICBDQV9kYXRhc2V0MSDpgInmi6kw77yMNOS9nOS4uuWfuui0qOe7huiDniBDQV9kYXRhc2V0MiDpgInmi6k35ZKMMuS9nOS4uuWfuui0qOe7huiDniBteWVsb2lkIENBX2RhdGFzZXQyIDFcbiNDQV9kYXRhc2V0MiDpgInmi6k35ZKMMuS9nOS4uuWfuui0qOe7huiDnlxudW1hcHBsb3QobHltX2RzMixzcGxpdC5ieSA9IFwic2FtcGxlXCIpIyDmt4vlt7RcbnNhdmVSRFMobHltX2RzMixcImx5bV9kczIucmRzXCIpXG5cbiMgc2F2ZVJEUyhkczAsXCJkczAucmRzXCIpXG4jIHNhdmVSRFMoZHMxLFwiZHMxLnJkc1wiKVxuXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIkxZWlwiLFwiUFRQUkNcIixcIkNENjlcIixcIlBER0ZSQlwiLFwiQ09MMUEyXCIsXCJQRUNBTTFcIixcIkNMRE41XCIpLCBDQV9kYXRhc2V0MilcbiMgbXVsdGlfZmVhdHVyZXBsb3QoYyhcIkFDVEEyXCIsXCJGTjFcIiksIENBX2RhdGFzZXQyKVxudW1hcHBsb3QoQ0FfZGF0YXNldDIpXG5seW1fZHMyIDwtIHN1YnNldChDQV9kYXRhc2V0MiwgaWRlbnRzID0gYygnMCcsJzQnLCc5JykpICAjaHVtYW5fY29yIOmAieaLqTAgMyA0ICBDQV9kYXRhc2V0MSDpgInmi6kw77yMNOS9nOS4uuWfuui0qOe7huiDniBDQV9kYXRhc2V0MiDpgInmi6k35ZKMMuS9nOS4uuWfuui0qOe7huiDniBteWVsb2lkIENBX2RhdGFzZXQyIDFcbiNDQV9kYXRhc2V0MiDpgInmi6k35ZKMMuS9nOS4uuWfuui0qOe7huiDnlxudW1hcHBsb3QobHltX2RzMixzcGxpdC5ieSA9IFwic2FtcGxlXCIpIyDmt4vlt7RcbnNhdmVSRFMobHltX2RzMixcImx5bV9kczIucmRzXCIpXG5cbiMgc2F2ZVJEUyhkczAsXCJkczAucmRzXCIpXG4jIHNhdmVSRFMoZHMxLFwiZHMxLnJkc1wiKVxuYGBgIn0= -->
 <pre class="r"><code>multi_featureplot(c(&quot;LYZ&quot;,&quot;PTPRC&quot;,&quot;CD69&quot;,&quot;PDGFRB&quot;,&quot;COL1A2&quot;,&quot;PECAM1&quot;,&quot;CLDN5&quot;), CA_dataset2)
 # multi_featureplot(c(&quot;ACTA2&quot;,&quot;FN1&quot;), CA_dataset2)
 umapplot(CA_dataset2)
@@ -282,68 +277,17 @@ umapplot(lym_ds2,split.by = &quot;sample&quot;)# 淋巴
 saveRDS(lym_ds2,&quot;lym_ds2.rds&quot;)
 
 # saveRDS(ds0,&quot;ds0.rds&quot;)
-# saveRDS(ds1,&quot;ds1.rds&quot;)
-</code></pre>
+# saveRDS(ds1,&quot;ds1.rds&quot;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-</div>
-<div id="ecs亚群分析-整合" class="section level1">
-<h1>ECs亚群分析 整合</h1>
-<div id="整合算法可能出现负值运行scenic时舍弃了这些异常值" class="section level2">
-<h2>整合算法可能出现负值，运行SCENIC时舍弃了这些异常值</h2>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyDmj5Dlj5blhoXnmq7nu4bog57kuprnvqRcbkVDc19saXN0IDwtIGxpc3Qoc3Vic2V0KENBX2RhdGFzZXQxLCBpZGVudHMgPSBcIkVuZG90aGVsaWFsXCIpLCBzdWJzZXQoaHVtYW5fY29yb25hcnksIGlkZW50cyA9IFwiRW5kb3RoZWxpYWxcIikpXG5cbkVDc19saXN0IDwtIGxhcHBseShYID0gRUNzX2xpc3QsIEZVTiA9IGZ1bmN0aW9uKHgpIHtcbiAgeCA8LSBOb3JtYWxpemVEYXRhKHgpXG4gIHggPC0gRmluZFZhcmlhYmxlRmVhdHVyZXMoeCwgc2VsZWN0aW9uLm1ldGhvZCA9IFwidnN0XCIsIG5mZWF0dXJlcyA9IDIwMDApXG59KVxuIyDpnIDopoHliIbmnpDnmoTlt67lvILln7rlm6BcbmludF9mZWF0dXJlcyA8LSBTZWxlY3RJbnRlZ3JhdGlvbkZlYXR1cmVzKG9iamVjdC5saXN0ID0gRUNzX2xpc3QpXG4jIOmAieaLqeWQiOW5tueahGFuY2hvcueJueW+gVxuaW50X2FuY2hvcnMgPC0gRmluZEludGVncmF0aW9uQW5jaG9ycyhvYmplY3QubGlzdCA9IEVDc19saXN0LCBhbmNob3IuZmVhdHVyZXMgPSBpbnRfZmVhdHVyZXMpXG5cbiMg5qC55o2uYW5jaG9y5ZCI5bm2XG5FQ3NfY29tYmluZWQgPC0gSW50ZWdyYXRlRGF0YShhbmNob3JzZXQgPSBpbnRfYW5jaG9ycylcblxuRGVmYXVsdEFzc2F5KEVDc19jb21iaW5lZCkgPC0gXCJpbnRlZ3JhdGVkXCJcbnJtKFwiRUNzX2xpc3RcIiwgXCJpbnRfZmVhdHVyZXNcIiwgXCJpbnRfYW5jaG9yc1wiKVxuYGBgIn0= -->
-<pre class="r"><code># 提取内皮细胞亚群
-ECs_list &lt;- list(subset(CA_dataset1, idents = &quot;Endothelial&quot;), subset(human_coronary, idents = &quot;Endothelial&quot;))
-
-ECs_list &lt;- lapply(X = ECs_list, FUN = function(x) {
-  x &lt;- NormalizeData(x)
-  x &lt;- FindVariableFeatures(x, selection.method = &quot;vst&quot;, nfeatures = 2000)
-})
-# 需要分析的差异基因
-int_features &lt;- SelectIntegrationFeatures(object.list = ECs_list)
-# 选择合并的anchor特征
-int_anchors &lt;- FindIntegrationAnchors(object.list = ECs_list, anchor.features = int_features)
-
-# 根据anchor合并
-ECs_combined &lt;- IntegrateData(anchorset = int_anchors)
-
-DefaultAssay(ECs_combined) &lt;- &quot;integrated&quot;
-rm(&quot;ECs_list&quot;, &quot;int_features&quot;, &quot;int_anchors&quot;)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIlRORlJTRjExQlwiLFwiQUNUQTJcIixcIkNOTjFcIixcIkxVTVwiKSxodW1hbl9jb3JvbmFyeSlcbm11bHRpX2ZlYXR1cmVwbG90KGMoXCJUTkZSU0YxMUJcIixcIkFDVEEyXCIsXCJDTk4xXCIsXCJMVU1cIiksQ0FfZGF0YXNldDEpXG5tdWx0aV9mZWF0dXJlcGxvdChjKFwiVE5GUlNGMTFCXCIsXCJBQ1RBMlwiLFwiQ05OMVwiLFwiTFVNXCIpLENBX2RhdGFzZXQyKVxuYGBgIn0= -->
-<pre class="r"><code>multi_featureplot(c(&quot;TNFRSF11B&quot;,&quot;ACTA2&quot;,&quot;CNN1&quot;,&quot;LUM&quot;),human_coronary)
-multi_featureplot(c(&quot;TNFRSF11B&quot;,&quot;ACTA2&quot;,&quot;CNN1&quot;,&quot;LUM&quot;),CA_dataset1)
-multi_featureplot(c(&quot;TNFRSF11B&quot;,&quot;ACTA2&quot;,&quot;CNN1&quot;,&quot;LUM&quot;),CA_dataset2)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2VuZXMgPC0gYyhcIkxHQUxTM1wiLFwiQ0Q2OFwiLFwiS0xGNFwiLFwiQ0xETjVcIixcIlZXRlwiLFwiQUNUQTJcIilcbm11bHRpX2ZlYXR1cmVwbG90KGdlbmVzLENBX2RhdGFzZXQyKVxuRG90cGxvdChnZW5lcyxDQV9kYXRhc2V0MikgIyAyPjVcbm11bHRpX2ZlYXR1cmVwbG90KGdlbmVzLGh1bWFuX2Nvcm9uYXJ5KVxuRG90cGxvdChnZW5lcyxodW1hbl9jb3JvbmFyeSlcbmBgYCJ9 -->
-<pre class="r"><code>genes &lt;- c(&quot;LGALS3&quot;,&quot;CD68&quot;,&quot;KLF4&quot;,&quot;CLDN5&quot;,&quot;VWF&quot;,&quot;ACTA2&quot;)
-multi_featureplot(genes,CA_dataset2)
-Dotplot(genes,CA_dataset2) # 2&gt;5
-multi_featureplot(genes,human_coronary)
-Dotplot(genes,human_coronary)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
 </div>
 <div id="差异基因" class="section level1">
 <h1>差异基因</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudW1hcHBsb3QoZHMyLHNwbGl0LmJ5ID0gXCJjb25kaXRpb25zXCIpXG5kczIgPC0gZHMyICU+JSBGaW5kTmVpZ2hib3JzKGRpbXMgPSAxOjIwKSAlPiUgRmluZENsdXN0ZXJzKHJlc29sdXRpb24gPSAwLjEpXG51bWFwcGxvdChkczIsIGdyb3VwLmJ5ID0gXCJzZXVyYXRfY2x1c3RlcnNcIixzcGxpdC5ieSA9IFwiY29uZGl0aW9uc1wiKVxuSWRlbnRzKGRzMikgPC0gZHMyJGNvbmRpdGlvbnNcbmRzMl9BQyA8LSBzdWJzZXQoZHMyLCBpZGVudHMgPSBcIkFDXCIpXG5kczJfUEEgPC0gc3Vic2V0KGRzMiwgaWRlbnRzID0gXCJQQVwiKVxuZHMyX0FDIDwtIGRzMl9BQyAlPiUgRmluZE5laWdoYm9ycyhkaW1zID0gMToyMCkgJT4lIEZpbmRDbHVzdGVycyhyZXNvbHV0aW9uID0gMC4xKVxuZHMyX1BBIDwtIGRzMl9QQSAlPiUgRmluZE5laWdoYm9ycyhkaW1zID0gMToyMCkgJT4lIEZpbmRDbHVzdGVycyhyZXNvbHV0aW9uID0gMC4xKVxuXG51bWFwcGxvdChkczJfQUMpICsgc2NhbGVfeV9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpICtcbiAgICAgICAgc2NhbGVfeF9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpXG51bWFwcGxvdChkczJfUEEpKyBzY2FsZV95X2NvbnRpbnVvdXMobGltaXRzID0gYygtNSwxNSksYnJlYWtzID0gTlVMTCkgK1xuICAgICAgICBzY2FsZV94X2NvbnRpbnVvdXMobGltaXRzID0gYygtNSwxNSksYnJlYWtzID0gTlVMTClcblxuZHMyX21hcmtlcnMgPC0gRmluZEFsbE1hcmtlcnMoZHMyLCBsb2dmYy50aHJlc2hvbGQgPSAwLjUsIG1pbi5kaWZmLnBjdCA9IDAuMylcblxubXVsdGlfZmVhdHVyZXBsb3QoYyhcIkRDTlwiLFwiVkNBTTFcIixcIkxVTVwiLFwiQ05OMVwiLFwiQUNUQTJcIixcIkdKQTRcIixcIk9NRFwiLFwiXHRcbkZCTE4xXCIsXCJDWENMMTRcIixcIkMzXCIpLGRzMilcblxuRG90cGxvdChjKFwiRENOXCIsXCJWQ0FNMVwiLFwiTFVNXCIsXCJDTk4xXCIsXCJBQ1RBMlwiLFwiR0pBNFwiLFwiT01EXCIsXCJGQkxOMVwiLFwiQ1hDTDE0XCIsXCJDM1wiKSxkczIpXG5gYGAifQ== -->
-<pre class="r"><code>umapplot(ds2,split.by = &quot;conditions&quot;)
-ds2 &lt;- ds2 %&gt;% FindNeighbors(dims = 1:20) %&gt;% FindClusters(resolution = 0.1)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZHMyIDwtIGRzMiAlPiUgRmluZE5laWdoYm9ycyhkaW1zID0gMToyMCkgJT4lIEZpbmRDbHVzdGVycyhyZXNvbHV0aW9uID0gMC4xKVxudW1hcHBsb3QoZHMyLCBncm91cC5ieSA9IFwic2V1cmF0X2NsdXN0ZXJzXCIsc3BsaXQuYnkgPSBcImNvbmRpdGlvbnNcIilcbklkZW50cyhkczIpIDwtIGRzMiRjb25kaXRpb25zXG5kczJfQUMgPC0gc3Vic2V0KGRzMiwgaWRlbnRzID0gXCJBQ1wiKVxuZHMyX1BBIDwtIHN1YnNldChkczIsIGlkZW50cyA9IFwiUEFcIilcbmRzMl9BQyA8LSBkczJfQUMgJT4lIEZpbmROZWlnaGJvcnMoZGltcyA9IDE6MjApICU+JSBGaW5kQ2x1c3RlcnMocmVzb2x1dGlvbiA9IDAuMSlcbmRzMl9QQSA8LSBkczJfUEEgJT4lIEZpbmROZWlnaGJvcnMoZGltcyA9IDE6MjApICU+JSBGaW5kQ2x1c3RlcnMocmVzb2x1dGlvbiA9IDAuMSlcblxudW1hcHBsb3QoZHMyX0FDKSArIHNjYWxlX3lfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKSArXG4gICAgICAgIHNjYWxlX3hfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKVxudW1hcHBsb3QoZHMyX1BBKSsgc2NhbGVfeV9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpICtcbiAgICAgICAgc2NhbGVfeF9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpXG5cbmRzMl9tYXJrZXJzIDwtIEZpbmRBbGxNYXJrZXJzKGRzMiwgbG9nZmMudGhyZXNob2xkID0gMC41LCBtaW4uZGlmZi5wY3QgPSAwLjMpXG5cbm11bHRpX2ZlYXR1cmVwbG90KGMoXCJEQ05cIixcIlZDQU0xXCIsXCJMVU1cIixcIkNOTjFcIixcIkFDVEEyXCIsXCJHSkE0XCIsXCJPTURcIixcIlx0XG5GQkxOMVwiLFwiQ1hDTDE0XCIsXCJDM1wiKSxkczIpXG5cbkRvdHBsb3QoYyhcIkRDTlwiLFwiVkNBTTFcIixcIkxVTVwiLFwiQ05OMVwiLFwiQUNUQTJcIixcIkdKQTRcIixcIk9NRFwiLFwiRkJMTjFcIixcIkNYQ0wxNFwiLFwiQzNcIiksZHMyKVxuYGBgIn0= -->
+<pre class="r"><code>ds2 &lt;- ds2 %&gt;% FindNeighbors(dims = 1:20) %&gt;% FindClusters(resolution = 0.1)
 umapplot(ds2, group.by = &quot;seurat_clusters&quot;,split.by = &quot;conditions&quot;)
 Idents(ds2) &lt;- ds2$conditions
 ds2_AC &lt;- subset(ds2, idents = &quot;AC&quot;)
@@ -392,269 +336,10 @@ umapplot(PA_dataset2)</code></pre>
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2w0X21hcmtlciA8LSBGaW5kTWFya2VycyhkczIsaWRlbnQuMSA9IDQsbG9nZmMudGhyZXNob2xkID0gMC41LCBtaW4uZGlmZi5wY3QgPSAwLjMpXG51bWFwcGxvdChkczIpXG5gYGAifQ== -->
-<pre class="r"><code>cl4_marker &lt;- FindMarkers(ds2,ident.1 = 4,logfc.threshold = 0.5, min.diff.pct = 0.3)
-umapplot(ds2)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxud3JpdGUuY3N2KGNsNF9tYXJrZXIsXCJjbDRfbWFya2VyLmNzdlwiLHJvdy5uYW1lcyA9IEYpXG5cbkRpbVBsb3QoZHMyKVxuYGBgIn0= -->
-<pre class="r"><code>write.csv(cl4_marker,&quot;cl4_marker.csv&quot;,row.names = F)
-
-DimPlot(ds2)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="dataset0-的modulated_smc在哪里" class="section level2">
-<h2>dataset0 的modulated_SMC在哪里</h2>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZmlicm9teW9jeXRlX21hcmtlcnMgPC0gYyhcIklHRkJQMlwiLFwiQkdOXCIsXCJES0szXCIsXCJWQ0FOXCIsXCJSQU1QMVwiLFwiU0dDQVwiLFwiTVlIMTBcIixcIkZNT0RcIixcIktSVDhcIilcbm11bHRpX2ZlYXR1cmVwbG90KGZpYnJvbXlvY3l0ZV9tYXJrZXJzLGRzMClcbmBgYCJ9 -->
-<pre class="r"><code>fibromyocyte_markers &lt;- c(&quot;IGFBP2&quot;,&quot;BGN&quot;,&quot;DKK3&quot;,&quot;VCAN&quot;,&quot;RAMP1&quot;,&quot;SGCA&quot;,&quot;MYH10&quot;,&quot;FMOD&quot;,&quot;KRT8&quot;)
-multi_featureplot(fibromyocyte_markers,ds0)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="markers" class="section level2">
-<h2>markers</h2>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBkczIgPC0gcmVhZFJEUyhcImRzMi5yZHNcIilcbmRzMl9tYXJrZXJzIDwtIEZpbmRBbGxNYXJrZXJzKGRzMixsb2dmYy50aHJlc2hvbGQgPSAwLjUsIG1pbi5kaWZmLnBjdCA9IDAuMiwgb25seS5wb3MgPSBUKVxuXG5gYGAifQ== -->
-<pre class="r"><code># ds2 &lt;- readRDS(&quot;ds2.rds&quot;)
-ds2_markers &lt;- FindAllMarkers(ds2,logfc.threshold = 0.5, min.diff.pct = 0.2, only.pos = T)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiQ2FsY3VsYXRpbmcgY2x1c3RlciBTTUMxXG4ifQ== -->
-<pre><code>Calculating cluster SMC1</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG4gIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMCAlIH5jYWxjdWxhdGluZyAgXG4gIHwrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNCAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgIHwgNTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgIHwgNTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgIHwgNTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgIHwgNjElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgIHwgNjQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgIHwgNjglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgIHwgNzElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgIHwgNzUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgIHwgNzklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgIHwgODIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgIHwgODYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgIHwgODklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgIHwgOTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrIHwgOTYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgMTAwJSBlbGFwc2VkPTAwcyAgXG4ifQ== -->
-<pre><code>
-  |                                                  | 0 % ~calculating  
-  |++                                                | 4 % ~00s          
-  |++++                                              | 7 % ~00s          
-  |++++++                                            | 11% ~00s          
-  |++++++++                                          | 14% ~00s          
-  |+++++++++                                         | 18% ~00s          
-  |+++++++++++                                       | 21% ~00s          
-  |+++++++++++++                                     | 25% ~00s          
-  |+++++++++++++++                                   | 29% ~00s          
-  |+++++++++++++++++                                 | 32% ~00s          
-  |++++++++++++++++++                                | 36% ~00s          
-  |++++++++++++++++++++                              | 39% ~00s          
-  |++++++++++++++++++++++                            | 43% ~00s          
-  |++++++++++++++++++++++++                          | 46% ~00s          
-  |+++++++++++++++++++++++++                         | 50% ~00s          
-  |+++++++++++++++++++++++++++                       | 54% ~00s          
-  |+++++++++++++++++++++++++++++                     | 57% ~00s          
-  |+++++++++++++++++++++++++++++++                   | 61% ~00s          
-  |+++++++++++++++++++++++++++++++++                 | 64% ~00s          
-  |++++++++++++++++++++++++++++++++++                | 68% ~00s          
-  |++++++++++++++++++++++++++++++++++++              | 71% ~00s          
-  |++++++++++++++++++++++++++++++++++++++            | 75% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++          | 79% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++        | 82% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++       | 86% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++     | 89% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++   | 93% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ | 96% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiQ2FsY3VsYXRpbmcgY2x1c3RlciBGaWJyb215b2N5dGVcbiJ9 -->
-<pre><code>Calculating cluster Fibromyocyte</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG4gIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMCAlIH5jYWxjdWxhdGluZyAgXG4gIHwrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNiAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgOSAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgIHwgNTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgIHwgNTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgIHwgNTYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgIHwgNTklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgIHwgNjIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgIHwgNjUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgIHwgNjglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgIHwgNzElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgIHwgNzQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgIHwgNzYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgIHwgNzklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgIHwgODIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgIHwgODUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgIHwgODglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgIHwgOTElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgIHwgOTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrIHwgOTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgMTAwJSBlbGFwc2VkPTAwcyAgXG4ifQ== -->
-<pre><code>
-  |                                                  | 0 % ~calculating  
-  |++                                                | 3 % ~00s          
-  |+++                                               | 6 % ~00s          
-  |+++++                                             | 9 % ~00s          
-  |++++++                                            | 12% ~00s          
-  |++++++++                                          | 15% ~00s          
-  |+++++++++                                         | 18% ~00s          
-  |+++++++++++                                       | 21% ~00s          
-  |++++++++++++                                      | 24% ~00s          
-  |++++++++++++++                                    | 26% ~00s          
-  |+++++++++++++++                                   | 29% ~00s          
-  |+++++++++++++++++                                 | 32% ~00s          
-  |++++++++++++++++++                                | 35% ~00s          
-  |++++++++++++++++++++                              | 38% ~00s          
-  |+++++++++++++++++++++                             | 41% ~00s          
-  |+++++++++++++++++++++++                           | 44% ~00s          
-  |++++++++++++++++++++++++                          | 47% ~00s          
-  |+++++++++++++++++++++++++                         | 50% ~00s          
-  |+++++++++++++++++++++++++++                       | 53% ~00s          
-  |++++++++++++++++++++++++++++                      | 56% ~00s          
-  |++++++++++++++++++++++++++++++                    | 59% ~00s          
-  |+++++++++++++++++++++++++++++++                   | 62% ~00s          
-  |+++++++++++++++++++++++++++++++++                 | 65% ~00s          
-  |++++++++++++++++++++++++++++++++++                | 68% ~00s          
-  |++++++++++++++++++++++++++++++++++++              | 71% ~00s          
-  |+++++++++++++++++++++++++++++++++++++             | 74% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++           | 76% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++          | 79% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++        | 82% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++       | 85% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++     | 88% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++    | 91% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++  | 94% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ | 97% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiQ2FsY3VsYXRpbmcgY2x1c3RlciBQZXJpY3l0ZVxuIn0= -->
-<pre><code>Calculating cluster Pericyte</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG4gIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMCAlIH5jYWxjdWxhdGluZyAgXG4gIHwrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgIHwgNTIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgIHwgNTUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgIHwgNTklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgIHwgNjIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgIHwgNjYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgIHwgNjklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgIHwgNzIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgIHwgNzYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgIHwgNzklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgIHwgODMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgIHwgODYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgIHwgOTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgIHwgOTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrIHwgOTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgMTAwJSBlbGFwc2VkPTAwcyAgXG4ifQ== -->
-<pre><code>
-  |                                                  | 0 % ~calculating  
-  |++                                                | 3 % ~00s          
-  |++++                                              | 7 % ~00s          
-  |++++++                                            | 10% ~00s          
-  |+++++++                                           | 14% ~00s          
-  |+++++++++                                         | 17% ~00s          
-  |+++++++++++                                       | 21% ~00s          
-  |+++++++++++++                                     | 24% ~00s          
-  |++++++++++++++                                    | 28% ~00s          
-  |++++++++++++++++                                  | 31% ~00s          
-  |++++++++++++++++++                                | 34% ~00s          
-  |+++++++++++++++++++                               | 38% ~00s          
-  |+++++++++++++++++++++                             | 41% ~00s          
-  |+++++++++++++++++++++++                           | 45% ~00s          
-  |+++++++++++++++++++++++++                         | 48% ~00s          
-  |++++++++++++++++++++++++++                        | 52% ~00s          
-  |++++++++++++++++++++++++++++                      | 55% ~00s          
-  |++++++++++++++++++++++++++++++                    | 59% ~00s          
-  |++++++++++++++++++++++++++++++++                  | 62% ~00s          
-  |+++++++++++++++++++++++++++++++++                 | 66% ~00s          
-  |+++++++++++++++++++++++++++++++++++               | 69% ~00s          
-  |+++++++++++++++++++++++++++++++++++++             | 72% ~00s          
-  |++++++++++++++++++++++++++++++++++++++            | 76% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++          | 79% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++        | 83% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++      | 86% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++     | 90% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++   | 93% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ | 97% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiQ2FsY3VsYXRpbmcgY2x1c3RlciBGaWJyb2JsYXN0XG4ifQ== -->
-<pre><code>Calculating cluster Fibroblast</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG4gIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMCAlIH5jYWxjdWxhdGluZyAgXG4gIHwrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMiAlIH4wMXMgICAgICAgICAgXG4gIHwrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMyAlIH4wMXMgICAgICAgICAgXG4gIHwrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNSAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNiAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgOCAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTElIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTMlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTQlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTYlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTclIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTklIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjElIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjIlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjQlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjUlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjclIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjklIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzIlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzMlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzUlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzclIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzglIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDAlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDElIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDMlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDQlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDYlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDglIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDklIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgIHwgNTElIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgIHwgNTIlIH4wMXMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgIHwgNTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgIHwgNTYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgIHwgNTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgIHwgNTklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgIHwgNjAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgIHwgNjIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgIHwgNjMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgIHwgNjUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgIHwgNjclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgIHwgNjglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgIHwgNzAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgIHwgNzElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgIHwgNzMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgIHwgNzUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgIHwgNzYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgIHwgNzglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgIHwgNzklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgIHwgODElIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgIHwgODMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgIHwgODQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgIHwgODYlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgIHwgODclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgIHwgODklIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgIHwgOTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgIHwgOTIlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgIHwgOTQlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgIHwgOTUlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrIHwgOTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgOTglIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgMTAwJSBlbGFwc2VkPTAxcyAgXG4ifQ== -->
-<pre><code>
-  |                                                  | 0 % ~calculating  
-  |+                                                 | 2 % ~01s          
-  |++                                                | 3 % ~01s          
-  |+++                                               | 5 % ~01s          
-  |++++                                              | 6 % ~01s          
-  |++++                                              | 8 % ~01s          
-  |+++++                                             | 10% ~01s          
-  |++++++                                            | 11% ~01s          
-  |+++++++                                           | 13% ~01s          
-  |++++++++                                          | 14% ~01s          
-  |++++++++                                          | 16% ~01s          
-  |+++++++++                                         | 17% ~01s          
-  |++++++++++                                        | 19% ~01s          
-  |+++++++++++                                       | 21% ~01s          
-  |++++++++++++                                      | 22% ~01s          
-  |++++++++++++                                      | 24% ~01s          
-  |+++++++++++++                                     | 25% ~01s          
-  |++++++++++++++                                    | 27% ~01s          
-  |+++++++++++++++                                   | 29% ~01s          
-  |++++++++++++++++                                  | 30% ~01s          
-  |++++++++++++++++                                  | 32% ~01s          
-  |+++++++++++++++++                                 | 33% ~01s          
-  |++++++++++++++++++                                | 35% ~01s          
-  |+++++++++++++++++++                               | 37% ~01s          
-  |++++++++++++++++++++                              | 38% ~01s          
-  |++++++++++++++++++++                              | 40% ~01s          
-  |+++++++++++++++++++++                             | 41% ~01s          
-  |++++++++++++++++++++++                            | 43% ~01s          
-  |+++++++++++++++++++++++                           | 44% ~01s          
-  |++++++++++++++++++++++++                          | 46% ~01s          
-  |++++++++++++++++++++++++                          | 48% ~01s          
-  |+++++++++++++++++++++++++                         | 49% ~01s          
-  |++++++++++++++++++++++++++                        | 51% ~01s          
-  |+++++++++++++++++++++++++++                       | 52% ~01s          
-  |+++++++++++++++++++++++++++                       | 54% ~00s          
-  |++++++++++++++++++++++++++++                      | 56% ~00s          
-  |+++++++++++++++++++++++++++++                     | 57% ~00s          
-  |++++++++++++++++++++++++++++++                    | 59% ~00s          
-  |+++++++++++++++++++++++++++++++                   | 60% ~00s          
-  |+++++++++++++++++++++++++++++++                   | 62% ~00s          
-  |++++++++++++++++++++++++++++++++                  | 63% ~00s          
-  |+++++++++++++++++++++++++++++++++                 | 65% ~00s          
-  |++++++++++++++++++++++++++++++++++                | 67% ~00s          
-  |+++++++++++++++++++++++++++++++++++               | 68% ~00s          
-  |+++++++++++++++++++++++++++++++++++               | 70% ~00s          
-  |++++++++++++++++++++++++++++++++++++              | 71% ~00s          
-  |+++++++++++++++++++++++++++++++++++++             | 73% ~00s          
-  |++++++++++++++++++++++++++++++++++++++            | 75% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++           | 76% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++           | 78% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++          | 79% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++         | 81% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++        | 83% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++       | 84% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++       | 86% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++      | 87% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++     | 89% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++    | 90% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++   | 92% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++   | 94% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++  | 95% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ | 97% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 98% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=01s  </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiQ2FsY3VsYXRpbmcgY2x1c3RlciBTTUMyXG4ifQ== -->
-<pre><code>Calculating cluster SMC2</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG4gIHwgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMCAlIH5jYWxjdWxhdGluZyAgXG4gIHwrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNyAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMzclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgICAgIHwgNDclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgICAgICAgICAgIHwgNTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgICAgIHwgNTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgICAgIHwgNTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgICAgICAgICAgIHwgNjAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgICAgIHwgNjMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgICAgIHwgNjclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgICAgICAgICAgIHwgNzAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgICAgIHwgNzMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgICAgIHwgNzclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrICAgICAgICAgIHwgODAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgICAgIHwgODMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgICAgIHwgODclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysgICAgIHwgOTAlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyAgIHwgOTMlIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrIHwgOTclIH4wMHMgICAgICAgICAgXG4gIHwrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK3wgMTAwJSBlbGFwc2VkPTAwcyAgXG4ifQ== -->
-<pre><code>
-  |                                                  | 0 % ~calculating  
-  |++                                                | 3 % ~00s          
-  |++++                                              | 7 % ~00s          
-  |+++++                                             | 10% ~00s          
-  |+++++++                                           | 13% ~00s          
-  |+++++++++                                         | 17% ~00s          
-  |++++++++++                                        | 20% ~00s          
-  |++++++++++++                                      | 23% ~00s          
-  |++++++++++++++                                    | 27% ~00s          
-  |+++++++++++++++                                   | 30% ~00s          
-  |+++++++++++++++++                                 | 33% ~00s          
-  |+++++++++++++++++++                               | 37% ~00s          
-  |++++++++++++++++++++                              | 40% ~00s          
-  |++++++++++++++++++++++                            | 43% ~00s          
-  |++++++++++++++++++++++++                          | 47% ~00s          
-  |+++++++++++++++++++++++++                         | 50% ~00s          
-  |+++++++++++++++++++++++++++                       | 53% ~00s          
-  |+++++++++++++++++++++++++++++                     | 57% ~00s          
-  |++++++++++++++++++++++++++++++                    | 60% ~00s          
-  |++++++++++++++++++++++++++++++++                  | 63% ~00s          
-  |++++++++++++++++++++++++++++++++++                | 67% ~00s          
-  |+++++++++++++++++++++++++++++++++++               | 70% ~00s          
-  |+++++++++++++++++++++++++++++++++++++             | 73% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++           | 77% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++          | 80% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++        | 83% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++      | 87% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++     | 90% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++   | 93% ~00s          
-  |+++++++++++++++++++++++++++++++++++++++++++++++++ | 97% ~00s          
-  |++++++++++++++++++++++++++++++++++++++++++++++++++| 100% elapsed=00s  </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKVGhpcyBpcyBhbiBbUiBNYXJrZG93bl0oaHR0cDovL3JtYXJrZG93bi5yc3R1ZGlvLmNvbSkgTm90ZWJvb2suIFdoZW4geW91IGV4ZWN1dGUgY29kZSB3aXRoaW4gdGhlIG5vdGVib29rLCB0aGUgcmVzdWx0cyBhcHBlYXIgYmVuZWF0aCB0aGUgY29kZS4gCgpUcnkgZXhlY3V0aW5nIHRoaXMgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpSdW4qIGJ1dHRvbiB3aXRoaW4gdGhlIGNodW5rIG9yIGJ5IHBsYWNpbmcgeW91ciBjdXJzb3IgaW5zaWRlIGl0IGFuZCBwcmVzc2luZyAqQ3RybCtTaGlmdCtFbnRlciouIAoKYGBge3J9CnNvdXJjZSgiLi90aWFuZmVuZ1J3cmFwcGVycy5SIikKIyBwbGFuKCJtdWx0aXByb2Nlc3MiLHdvcmtlcnMgPSA4KQpgYGAKCiMg6K+75Y+W57uT5p6cCmBgYHtyfQpodW1hbl9jb3JvbmFyeSA8LSByZWFkUkRTKCJodW1hbl9jb3JvbmFyeS5yZHMiKQpDQV9kYXRhc2V0MSA8LSByZWFkUkRTKCJDQV9kYXRhc2V0MS5yZHMiKQpDQV9kYXRhc2V0MiA8LSByZWFkUkRTKCJDQV9kYXRhc2V0Mi5yZHMiKSAj5bey57uP57uP6L+H5YiG57uE5aSE55CG5LqGCmBgYAoKIyMg5L+u5pS55YiG576kCmBgYHtyfQp1bWFwcGxvdChDQV9kYXRhc2V0Miwgc3BsaXQuYnkgPSAic2FtcGxlIikKdW1hcHBsb3QoQ0FfZGF0YXNldDIsZ3JvdXAuYnkgPSAiZ3JvdXBzIiwgc3BsaXQuYnkgPSAiY29uZGl0aW9ucyIpCm11bHRpX2ZlYXR1cmVwbG90KGMoIkhFWTEiLCJHSkE1IiwiU0VNQTNHIiwiQ1hDTDEyIiwiU09YMTciLCJDREg1IiwiUEVDQU0xIiksQ0FfZGF0YXNldDIpCm11bHRpX2ZlYXR1cmVwbG90KGMoIkFDS1IxIiwiUExWQVAiLCJJVEdBNiIsIlBFQ0FNMSIpLENBX2RhdGFzZXQyKQpgYGAKYGBge3J9CiMgdGFibGUoQ0FfZGF0YXNldDIkc2FtcGxlKQoKIyDlhbPms6hjbHVzdGVyIDMtNiBFQwojIGNsdXN0ZXIgNyDln7rotKjnu4bog54KCm11bHRpX2ZlYXR1cmVwbG90KGMoIkxZWiIsIlBUUFJDIiwiQ0Q2OSIsIkVQQ0FNIiwiQ0RIMSIsIlBER0ZSQiIsIkNPTDFBMiIsIlBFQ0FNMSIsIkNMRE41IiksQ0FfZGF0YXNldDIpCgpEb3RwbG90KGMoIkxVTSIsIk1NUDIiLCJNR1AiLCJEQ04iLCJNWUgxMSIsIkFDVEEyIiwiQ05OMSIsIlRBR0xOIiksQ0FfZGF0YXNldDIpICNjbHVzdGVyIDcg57uG6IOe5Y+v5Lul6KKr6K6k5Li65pivbW9kdWxhdGVkIFNNQ3MKQ0FfZGF0YXNldDIgPC0gQWRkTW9kdWxlU2NvcmUoQ0FfZGF0YXNldDIsbGlzdChjKCJMVU0iLCJNTVAyIiwiTUdQIiwiRENOIikpKQpDQV9kYXRhc2V0MiA8LSBBZGRNb2R1bGVTY29yZShDQV9kYXRhc2V0MixsaXN0KGMoIk1ZSDExIiwiQUNUQTIiLCJDTk4xIiwiVEFHTE4iKSkpCm11bHRpX2ZlYXR1cmVwbG90KGMoIkNsdXN0ZXIxIiwiTFVNIiwiQUNUQTIiLCJUQUdMTiIpLENBX2RhdGFzZXQyKQptdWx0aV9mZWF0dXJlcGxvdChjKCJNTVAyIiwiR0pBNCIsIlBFQ0FNMSIsIkFDS1IxIiksIENBX2RhdGFzZXQyKQptdWx0aV9mZWF0dXJlcGxvdChjKCJNTVAyIiwiR0pBNCIsIlBFQ0FNMSIsIkFDS1IxIiksIGh1bWFuX2Nvcm9uYXJ5KQoKYGBgCiMg5Z+66LSo57uG6IOe5YiG57G7CmBgYHtyfQptdWx0aV9mZWF0dXJlcGxvdChjKCJMWVoiLCJQVFBSQyIsIkNENjkiLCJQREdGUkIiLCJDT0wxQTIiLCJQRUNBTTEiLCJDTERONSIpLCBDQV9kYXRhc2V0MikKIyBtdWx0aV9mZWF0dXJlcGxvdChjKCJBQ1RBMiIsIkZOMSIpLCBDQV9kYXRhc2V0MikKdW1hcHBsb3QoQ0FfZGF0YXNldDIpCmx5bV9kczIgPC0gc3Vic2V0KENBX2RhdGFzZXQyLCBpZGVudHMgPSBjKCcwJywnNCcsJzknKSkgICNodW1hbl9jb3Ig6YCJ5oupMCAzIDQgIENBX2RhdGFzZXQxIOmAieaLqTDvvIw05L2c5Li65Z+66LSo57uG6IOeIENBX2RhdGFzZXQyIOmAieaLqTflkowy5L2c5Li65Z+66LSo57uG6IOeIG15ZWxvaWQgQ0FfZGF0YXNldDIgMQojQ0FfZGF0YXNldDIg6YCJ5oupN+WSjDLkvZzkuLrln7rotKjnu4bog54KdW1hcHBsb3QobHltX2RzMixzcGxpdC5ieSA9ICJzYW1wbGUiKSMg5reL5be0CnNhdmVSRFMobHltX2RzMiwibHltX2RzMi5yZHMiKQoKIyBzYXZlUkRTKGRzMCwiZHMwLnJkcyIpCiMgc2F2ZVJEUyhkczEsImRzMS5yZHMiKQoKYGBgCgoKCiMgRUNz5Lqa576k5YiG5p6QIOaVtOWQiAojIyDmlbTlkIjnrpfms5Xlj6/og73lh7rnjrDotJ/lgLzvvIzov5DooYxTQ0VOSUPml7boiI3lvIPkuobov5nkupvlvILluLjlgLwKYGBge3J9CiMg5o+Q5Y+W5YaF55qu57uG6IOe5Lqa576kCkVDc19saXN0IDwtIGxpc3Qoc3Vic2V0KENBX2RhdGFzZXQxLCBpZGVudHMgPSAiRW5kb3RoZWxpYWwiKSwgc3Vic2V0KGh1bWFuX2Nvcm9uYXJ5LCBpZGVudHMgPSAiRW5kb3RoZWxpYWwiKSkKCkVDc19saXN0IDwtIGxhcHBseShYID0gRUNzX2xpc3QsIEZVTiA9IGZ1bmN0aW9uKHgpIHsKICB4IDwtIE5vcm1hbGl6ZURhdGEoeCkKICB4IDwtIEZpbmRWYXJpYWJsZUZlYXR1cmVzKHgsIHNlbGVjdGlvbi5tZXRob2QgPSAidnN0IiwgbmZlYXR1cmVzID0gMjAwMCkKfSkKIyDpnIDopoHliIbmnpDnmoTlt67lvILln7rlm6AKaW50X2ZlYXR1cmVzIDwtIFNlbGVjdEludGVncmF0aW9uRmVhdHVyZXMob2JqZWN0Lmxpc3QgPSBFQ3NfbGlzdCkKIyDpgInmi6nlkIjlubbnmoRhbmNob3LnibnlvoEKaW50X2FuY2hvcnMgPC0gRmluZEludGVncmF0aW9uQW5jaG9ycyhvYmplY3QubGlzdCA9IEVDc19saXN0LCBhbmNob3IuZmVhdHVyZXMgPSBpbnRfZmVhdHVyZXMpCgojIOagueaNrmFuY2hvcuWQiOW5tgpFQ3NfY29tYmluZWQgPC0gSW50ZWdyYXRlRGF0YShhbmNob3JzZXQgPSBpbnRfYW5jaG9ycykKCkRlZmF1bHRBc3NheShFQ3NfY29tYmluZWQpIDwtICJpbnRlZ3JhdGVkIgpybSgiRUNzX2xpc3QiLCAiaW50X2ZlYXR1cmVzIiwgImludF9hbmNob3JzIikKYGBgCgoKYGBge3J9Cm11bHRpX2ZlYXR1cmVwbG90KGMoIlRORlJTRjExQiIsIkFDVEEyIiwiQ05OMSIsIkxVTSIpLGh1bWFuX2Nvcm9uYXJ5KQptdWx0aV9mZWF0dXJlcGxvdChjKCJUTkZSU0YxMUIiLCJBQ1RBMiIsIkNOTjEiLCJMVU0iKSxDQV9kYXRhc2V0MSkKbXVsdGlfZmVhdHVyZXBsb3QoYygiVE5GUlNGMTFCIiwiQUNUQTIiLCJDTk4xIiwiTFVNIiksQ0FfZGF0YXNldDIpCmBgYAoKYGBge3J9CmdlbmVzIDwtIGMoIkxHQUxTMyIsIkNENjgiLCJLTEY0IiwiQ0xETjUiLCJWV0YiLCJBQ1RBMiIpCm11bHRpX2ZlYXR1cmVwbG90KGdlbmVzLENBX2RhdGFzZXQyKQpEb3RwbG90KGdlbmVzLENBX2RhdGFzZXQyKSAjIDI+NQptdWx0aV9mZWF0dXJlcGxvdChnZW5lcyxodW1hbl9jb3JvbmFyeSkKRG90cGxvdChnZW5lcyxodW1hbl9jb3JvbmFyeSkKYGBgCgojIOW3ruW8guWfuuWboApgYGB7cn0KdW1hcHBsb3QoZHMyLHNwbGl0LmJ5ID0gImNvbmRpdGlvbnMiKQpkczIgPC0gZHMyICU+JSBGaW5kTmVpZ2hib3JzKGRpbXMgPSAxOjIwKSAlPiUgRmluZENsdXN0ZXJzKHJlc29sdXRpb24gPSAwLjEpCnVtYXBwbG90KGRzMiwgZ3JvdXAuYnkgPSAic2V1cmF0X2NsdXN0ZXJzIixzcGxpdC5ieSA9ICJjb25kaXRpb25zIikKSWRlbnRzKGRzMikgPC0gZHMyJGNvbmRpdGlvbnMKZHMyX0FDIDwtIHN1YnNldChkczIsIGlkZW50cyA9ICJBQyIpCmRzMl9QQSA8LSBzdWJzZXQoZHMyLCBpZGVudHMgPSAiUEEiKQpkczJfQUMgPC0gZHMyX0FDICU+JSBGaW5kTmVpZ2hib3JzKGRpbXMgPSAxOjIwKSAlPiUgRmluZENsdXN0ZXJzKHJlc29sdXRpb24gPSAwLjEpCmRzMl9QQSA8LSBkczJfUEEgJT4lIEZpbmROZWlnaGJvcnMoZGltcyA9IDE6MjApICU+JSBGaW5kQ2x1c3RlcnMocmVzb2x1dGlvbiA9IDAuMSkKCnVtYXBwbG90KGRzMl9BQykgKyBzY2FsZV95X2NvbnRpbnVvdXMobGltaXRzID0gYygtNSwxNSksYnJlYWtzID0gTlVMTCkgKwogICAgICAgIHNjYWxlX3hfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKQp1bWFwcGxvdChkczJfUEEpKyBzY2FsZV95X2NvbnRpbnVvdXMobGltaXRzID0gYygtNSwxNSksYnJlYWtzID0gTlVMTCkgKwogICAgICAgIHNjYWxlX3hfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKQoKZHMyX21hcmtlcnMgPC0gRmluZEFsbE1hcmtlcnMoZHMyLCBsb2dmYy50aHJlc2hvbGQgPSAwLjUsIG1pbi5kaWZmLnBjdCA9IDAuMykKCm11bHRpX2ZlYXR1cmVwbG90KGMoIkRDTiIsIlZDQU0xIiwiTFVNIiwiQ05OMSIsIkFDVEEyIiwiR0pBNCIsIk9NRCIsIgkKRkJMTjEiLCJDWENMMTQiLCJDMyIpLGRzMikKCkRvdHBsb3QoYygiRENOIiwiVkNBTTEiLCJMVU0iLCJDTk4xIiwiQUNUQTIiLCJHSkE0IiwiT01EIiwiRkJMTjEiLCJDWENMMTQiLCJDMyIpLGRzMikKYGBgCiMjIGFubm9hdGlvbgpgYGB7cn0KbXVsdGlfZmVhdHVyZXBsb3QoYygiTFlaIiwiUFRQUkMiLCJDRDY5IiwiUERHRlJCIiwiQ09MMUEyIiwiUEVDQU0xIiwiQ0xETjUiKSwgQ0FfZGF0YXNldDIpCmBgYApgYGB7cn0KQ0FfZGF0YXNldDIgPC0gUmVuYW1lSWRlbnRzKENBX2RhdGFzZXQyLAogICAgICAgICAgICAgICAgICAgICAgICAgJzAnID0gJ1RfY2VsbDEnLCcxJyA9ICdNYWNyb3BoYWdlJywnMic9J1NNQycsCiAgICAgICAgICAgICAgICAgICAgICAgICAnMyc9ICdFQzEnLCc0JyA9J1RfY2VsbDInLCc1Jz0nQl9jZWxsJywKICAgICAgICAgICAgICAgICAgICAgICAgICc2Jz0nRUMyJywnNyc9J01vZF9TTUMnLCAnOCc9J01hc3RfY2VsbCcsJzknPSdUX2NlbGwzJywnMTAnPSdCX2NlbGwnKQpDQV9kYXRhc2V0MiRDbGFzc2lmaWNhdGlvbjEgPC0gSWRlbnRzKENBX2RhdGFzZXQyKQpJZGVudHMoQ0FfZGF0YXNldDIpIDwtIENBX2RhdGFzZXQyJGNvbmRpdGlvbnMKQUNfZGF0YXNldDIgPC0gc3Vic2V0KENBX2RhdGFzZXQyLCBpZGVudHMgPSAiQUMiKQpQQV9kYXRhc2V0MiA8LSBzdWJzZXQoQ0FfZGF0YXNldDIsIGlkZW50cyA9ICJQQSIpCgpJZGVudHMoQUNfZGF0YXNldDIpIDwtIEFDX2RhdGFzZXQyJENsYXNzaWZpY2F0aW9uMQpJZGVudHMoUEFfZGF0YXNldDIpIDwtIFBBX2RhdGFzZXQyJENsYXNzaWZpY2F0aW9uMQp1bWFwcGxvdChBQ19kYXRhc2V0MikKdW1hcHBsb3QoUEFfZGF0YXNldDIpCmBgYAoKYGBge3J9CmNsNF9tYXJrZXIgPC0gRmluZE1hcmtlcnMoZHMyLGlkZW50LjEgPSA0LGxvZ2ZjLnRocmVzaG9sZCA9IDAuNSwgbWluLmRpZmYucGN0ID0gMC4zKQp1bWFwcGxvdChkczIpCmBgYAoKYGBge3J9CndyaXRlLmNzdihjbDRfbWFya2VyLCJjbDRfbWFya2VyLmNzdiIscm93Lm5hbWVzID0gRikKCkRpbVBsb3QoZHMyKQpgYGAKCgojIyBkYXRhc2V0MCDnmoRtb2R1bGF0ZWRfU01D5Zyo5ZOq6YeMCmBgYHtyLCBmaWcud2lkdGg9NixmaWcuaGVpZ2h0PTZ9CmZpYnJvbXlvY3l0ZV9tYXJrZXJzIDwtIGMoIklHRkJQMiIsIkJHTiIsIkRLSzMiLCJWQ0FOIiwiUkFNUDEiLCJTR0NBIiwiTVlIMTAiLCJGTU9EIiwiS1JUOCIpCm11bHRpX2ZlYXR1cmVwbG90KGZpYnJvbXlvY3l0ZV9tYXJrZXJzLGRzMCkKYGBgCgojIyBtYXJrZXJzCmBgYHtyfQojIGRzMiA8LSByZWFkUkRTKCJkczIucmRzIikKZHMyX21hcmtlcnMgPC0gRmluZEFsbE1hcmtlcnMoZHMyLGxvZ2ZjLnRocmVzaG9sZCA9IDAuNSwgbWluLmRpZmYucGN0ID0gMC4yLCBvbmx5LnBvcyA9IFQpCndyaXRlLmNzdihkczJfbWFya2VycywiLi9kYXRhdGFibGUvZHMyX21hcmtlcnMuY3N2IikKYGBgCgoK</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKVGhpcyBpcyBhbiBbUiBNYXJrZG93bl0oaHR0cDovL3JtYXJrZG93bi5yc3R1ZGlvLmNvbSkgTm90ZWJvb2suIFdoZW4geW91IGV4ZWN1dGUgY29kZSB3aXRoaW4gdGhlIG5vdGVib29rLCB0aGUgcmVzdWx0cyBhcHBlYXIgYmVuZWF0aCB0aGUgY29kZS4gCgpUcnkgZXhlY3V0aW5nIHRoaXMgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpSdW4qIGJ1dHRvbiB3aXRoaW4gdGhlIGNodW5rIG9yIGJ5IHBsYWNpbmcgeW91ciBjdXJzb3IgaW5zaWRlIGl0IGFuZCBwcmVzc2luZyAqQ3RybCtTaGlmdCtFbnRlciouIAoKYGBge3J9CnNvdXJjZSgiLi90aWFuZmVuZ1J3cmFwcGVycy5SIikKIyBwbGFuKCJtdWx0aXByb2Nlc3MiLHdvcmtlcnMgPSA4KQpgYGAKCiMgZGF0YWxvYWQKYGBge3J9Cmh1bWFuX2Nvcm9uYXJ5IDwtIHJlYWRSRFMoImh1bWFuX2Nvcm9uYXJ5LnJkcyIpCkNBX2RhdGFzZXQxIDwtIHJlYWRSRFMoIkNBX2RhdGFzZXQxLnJkcyIpCkNBX2RhdGFzZXQyIDwtIHJlYWRSRFMoIkNBX2RhdGFzZXQyLnJkcyIpICPlt7Lnu4/nu4/ov4fliIbnu4TlpITnkIbkuoYKYGBgCgojIyDkv67mlLnliIbnvqQKYGBge3J9CnVtYXBwbG90KENBX2RhdGFzZXQyLCBzcGxpdC5ieSA9ICJzYW1wbGUiKQp1bWFwcGxvdChDQV9kYXRhc2V0Mixncm91cC5ieSA9ICJncm91cHMiLCBzcGxpdC5ieSA9ICJjb25kaXRpb25zIikKbXVsdGlfZmVhdHVyZXBsb3QoYygiSEVZMSIsIkdKQTUiLCJTRU1BM0ciLCJDWENMMTIiLCJTT1gxNyIsIkNESDUiLCJQRUNBTTEiKSxDQV9kYXRhc2V0MikKbXVsdGlfZmVhdHVyZXBsb3QoYygiQUNLUjEiLCJQTFZBUCIsIklUR0E2IiwiUEVDQU0xIiksQ0FfZGF0YXNldDIpCmBgYApgYGB7cn0KbXVsdGlfZmVhdHVyZXBsb3QoYygiTFlaIiwiUFRQUkMiLCJDRDY5IiwiRVBDQU0iLCJDREgxIiwiUERHRlJCIiwiQ09MMUEyIiwiUEVDQU0xIiwiQ0xETjUiKSxDQV9kYXRhc2V0MikKCkRvdHBsb3QoYygiTFVNIiwiTU1QMiIsIk1HUCIsIkRDTiIsIk1ZSDExIiwiQUNUQTIiLCJDTk4xIiwiVEFHTE4iKSxDQV9kYXRhc2V0MikgI2NsdXN0ZXIgNyDnu4bog57lj6/ku6XooqvorqTkuLrmmK9tb2R1bGF0ZWQgU01DcwpDQV9kYXRhc2V0MiA8LSBBZGRNb2R1bGVTY29yZShDQV9kYXRhc2V0MixsaXN0KGMoIkxVTSIsIk1NUDIiLCJNR1AiLCJEQ04iKSkpCkNBX2RhdGFzZXQyIDwtIEFkZE1vZHVsZVNjb3JlKENBX2RhdGFzZXQyLGxpc3QoYygiTVlIMTEiLCJBQ1RBMiIsIkNOTjEiLCJUQUdMTiIpKSkKbXVsdGlfZmVhdHVyZXBsb3QoYygiQ2x1c3RlcjEiLCJMVU0iLCJBQ1RBMiIsIlRBR0xOIiksQ0FfZGF0YXNldDIpCm11bHRpX2ZlYXR1cmVwbG90KGMoIk1NUDIiLCJHSkE0IiwiUEVDQU0xIiwiQUNLUjEiKSwgQ0FfZGF0YXNldDIpCm11bHRpX2ZlYXR1cmVwbG90KGMoIk1NUDIiLCJHSkE0IiwiUEVDQU0xIiwiQUNLUjEiKSwgaHVtYW5fY29yb25hcnkpCgpgYGAKIyDln7rotKjnu4bog57liIbnsbsKYGBge3J9Cm11bHRpX2ZlYXR1cmVwbG90KGMoIkxZWiIsIlBUUFJDIiwiQ0Q2OSIsIlBER0ZSQiIsIkNPTDFBMiIsIlBFQ0FNMSIsIkNMRE41IiksIENBX2RhdGFzZXQyKQojIG11bHRpX2ZlYXR1cmVwbG90KGMoIkFDVEEyIiwiRk4xIiksIENBX2RhdGFzZXQyKQp1bWFwcGxvdChDQV9kYXRhc2V0MikKbHltX2RzMiA8LSBzdWJzZXQoQ0FfZGF0YXNldDIsIGlkZW50cyA9IGMoJzAnLCc0JywnOScpKSAgI2h1bWFuX2NvciDpgInmi6kwIDMgNCAgQ0FfZGF0YXNldDEg6YCJ5oupMO+8jDTkvZzkuLrln7rotKjnu4bog54gQ0FfZGF0YXNldDIg6YCJ5oupN+WSjDLkvZzkuLrln7rotKjnu4bog54gbXllbG9pZCBDQV9kYXRhc2V0MiAxCiNDQV9kYXRhc2V0MiDpgInmi6k35ZKMMuS9nOS4uuWfuui0qOe7huiDngp1bWFwcGxvdChseW1fZHMyLHNwbGl0LmJ5ID0gInNhbXBsZSIpIyDmt4vlt7QKc2F2ZVJEUyhseW1fZHMyLCJseW1fZHMyLnJkcyIpCgojIHNhdmVSRFMoZHMwLCJkczAucmRzIikKIyBzYXZlUkRTKGRzMSwiZHMxLnJkcyIpCmBgYAoKIyDlt67lvILln7rlm6AKYGBge3J9CmRzMiA8LSBkczIgJT4lIEZpbmROZWlnaGJvcnMoZGltcyA9IDE6MjApICU+JSBGaW5kQ2x1c3RlcnMocmVzb2x1dGlvbiA9IDAuMSkKdW1hcHBsb3QoZHMyLCBncm91cC5ieSA9ICJzZXVyYXRfY2x1c3RlcnMiLHNwbGl0LmJ5ID0gImNvbmRpdGlvbnMiKQpJZGVudHMoZHMyKSA8LSBkczIkY29uZGl0aW9ucwpkczJfQUMgPC0gc3Vic2V0KGRzMiwgaWRlbnRzID0gIkFDIikKZHMyX1BBIDwtIHN1YnNldChkczIsIGlkZW50cyA9ICJQQSIpCmRzMl9BQyA8LSBkczJfQUMgJT4lIEZpbmROZWlnaGJvcnMoZGltcyA9IDE6MjApICU+JSBGaW5kQ2x1c3RlcnMocmVzb2x1dGlvbiA9IDAuMSkKZHMyX1BBIDwtIGRzMl9QQSAlPiUgRmluZE5laWdoYm9ycyhkaW1zID0gMToyMCkgJT4lIEZpbmRDbHVzdGVycyhyZXNvbHV0aW9uID0gMC4xKQoKdW1hcHBsb3QoZHMyX0FDKSArIHNjYWxlX3lfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKSArCiAgICAgICAgc2NhbGVfeF9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpCnVtYXBwbG90KGRzMl9QQSkrIHNjYWxlX3lfY29udGludW91cyhsaW1pdHMgPSBjKC01LDE1KSxicmVha3MgPSBOVUxMKSArCiAgICAgICAgc2NhbGVfeF9jb250aW51b3VzKGxpbWl0cyA9IGMoLTUsMTUpLGJyZWFrcyA9IE5VTEwpCgpkczJfbWFya2VycyA8LSBGaW5kQWxsTWFya2VycyhkczIsIGxvZ2ZjLnRocmVzaG9sZCA9IDAuNSwgbWluLmRpZmYucGN0ID0gMC4zKQoKbXVsdGlfZmVhdHVyZXBsb3QoYygiRENOIiwiVkNBTTEiLCJMVU0iLCJDTk4xIiwiQUNUQTIiLCJHSkE0IiwiT01EIiwiCQpGQkxOMSIsIkNYQ0wxNCIsIkMzIiksZHMyKQoKRG90cGxvdChjKCJEQ04iLCJWQ0FNMSIsIkxVTSIsIkNOTjEiLCJBQ1RBMiIsIkdKQTQiLCJPTUQiLCJGQkxOMSIsIkNYQ0wxNCIsIkMzIiksZHMyKQpgYGAKIyMgYW5ub2F0aW9uCmBgYHtyfQptdWx0aV9mZWF0dXJlcGxvdChjKCJMWVoiLCJQVFBSQyIsIkNENjkiLCJQREdGUkIiLCJDT0wxQTIiLCJQRUNBTTEiLCJDTERONSIpLCBDQV9kYXRhc2V0MikKYGBgCmBgYHtyfQpDQV9kYXRhc2V0MiA8LSBSZW5hbWVJZGVudHMoQ0FfZGF0YXNldDIsCiAgICAgICAgICAgICAgICAgICAgICAgICAnMCcgPSAnVF9jZWxsMScsJzEnID0gJ01hY3JvcGhhZ2UnLCcyJz0nU01DJywKICAgICAgICAgICAgICAgICAgICAgICAgICczJz0gJ0VDMScsJzQnID0nVF9jZWxsMicsJzUnPSdCX2NlbGwnLAogICAgICAgICAgICAgICAgICAgICAgICAgJzYnPSdFQzInLCc3Jz0nTW9kX1NNQycsICc4Jz0nTWFzdF9jZWxsJywnOSc9J1RfY2VsbDMnLCcxMCc9J0JfY2VsbCcpCkNBX2RhdGFzZXQyJENsYXNzaWZpY2F0aW9uMSA8LSBJZGVudHMoQ0FfZGF0YXNldDIpCklkZW50cyhDQV9kYXRhc2V0MikgPC0gQ0FfZGF0YXNldDIkY29uZGl0aW9ucwpBQ19kYXRhc2V0MiA8LSBzdWJzZXQoQ0FfZGF0YXNldDIsIGlkZW50cyA9ICJBQyIpClBBX2RhdGFzZXQyIDwtIHN1YnNldChDQV9kYXRhc2V0MiwgaWRlbnRzID0gIlBBIikKCklkZW50cyhBQ19kYXRhc2V0MikgPC0gQUNfZGF0YXNldDIkQ2xhc3NpZmljYXRpb24xCklkZW50cyhQQV9kYXRhc2V0MikgPC0gUEFfZGF0YXNldDIkQ2xhc3NpZmljYXRpb24xCnVtYXBwbG90KEFDX2RhdGFzZXQyKQp1bWFwcGxvdChQQV9kYXRhc2V0MikKYGBgCgoK</div>
 
 
 

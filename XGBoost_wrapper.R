@@ -1,0 +1,117 @@
+library(xgboost)
+library(Matrix)
+library(mclust)
+library(tidyverse)
+library(SHAPforxgboost)
+
+XGBoost_train_from_seuobj <- function(seuobj, is_highvar = T, test_ratio = 0.3, seed = 7)
+  ## set test_ratio to 0 to avoid extracting test from dataset
+{
+  set.seed(seed)
+  seuobj_label <- as.numeric(as.character(Idents(seuobj)))
+  if(is.na(seuobj_label[1])) # check vaild Idents
+  {
+    stop("Please ensure that seurat idents are in numeric forms")
+  }
+  # colnames(seuobj_data) <- NULL
+  seuobj_data <- get_data_table(seuobj, highvar = T, type = "data")
+  xgb_param <- list(eta = 0.2, max_depth = 6, 
+                    subsample = 0.6,  num_class = length(table(Idents(seuobj))),
+                    objective = "multi:softprob", eval_metric = 'mlogloss')
+  
+  if(test_ratio == 0) {
+    seuobj_train_data <- list(data = t(as(seuobj_data,"dgCMatrix")), label = seuobj_label) 
+    # use whole dataset as train data
+    seuobj_train <- xgb.DMatrix(data = seuobj_train_data$data,label = seuobj_train_data$label)
+    bst_model <- xgb.train(xgb_param, seuobj_train, nrounds = 100, verbose = 0)
+  } else {
+    index <- c(1:dim(seuobj_data)[2]) %>% sample(ceiling(test_ratio*dim(seuobj_data)[2]), replace = F, prob = NULL)
+    seuobj_train_data <- list(data = t(as(seuobj_data[,-index],"dgCMatrix")), label = seuobj_label[-index])
+    seuobj_test_data <- list(data = t(as(seuobj_data[,index],"dgCMatrix")), label = seuobj_label[index])
+    seuobj_test <- xgb.DMatrix(data = seuobj_test_data$data,label = seuobj_test_data$label)
+    seuobj_train <- xgb.DMatrix(data = seuobj_train_data$data,label = seuobj_train_data$label)
+    watchlist <- list(train = seuobj_train, eval = seuobj_test)
+    bst_model <- xgb.train(xgb_param, seuobj_train, nrounds = 100, watchlist, verbose = 0)
+  }
+  return(bst_model)
+}
+# saveRDS(bst_model, "ds2_model.rds")
+
+show_train_loss <- function(bst_model, nrounds = 100) #when $ test_ratio \neq 0 $ show loss in watchlist
+{
+  eval_loss <- bst_model[["evaluation_log"]][["eval_mlogloss"]]
+  plot_ly(data.frame(eval_loss), x = c(1:nrounds), y = eval_loss) %>% 
+    add_trace(type = "scatter", mode = "markers+lines", 
+              marker = list(color = "black", line = list(color = "#1E90FFC7", width = 1)),
+              line = list(color = "#1E90FF80", width = 2)) %>% 
+    layout(xaxis = list(title = "epoch"),yaxis = list(title = "eval_mlogloss"), 
+           title = "train_loss", font = list(family = "Arial", size = 25, color = "black"))
+}
+
+XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed = 7)
+  #return a updated seurat object with new metadata named confidence and projected_idents 
+{
+  seuobj_label <- as.numeric(as.character(Idents(seuobj)))
+  if(is.na(seuobj_label[1])) # check vaild Idents
+  {
+    stop("Please ensure that seurat idents are in numeric forms")
+  }
+  temp <- get_data_table(seuobj, highvar = T, type = "data")
+  seuobj_data <- matrix(data = 0, nrow = bst_model$nfeatures, ncol = length(colnames(temp)), 
+                        byrow = FALSE, dimnames = list(bst_model[["feature_names"]],colnames(temp)))
+  intersect_features <- intersect(bst_model[["feature_names"]], rownames(temp))
+  seuobj_data[intersect_features,] <- temp[intersect_features,]
+  rm(temp)
+  
+  
+  # colnames(seuobj_data) <- NULL
+  seuobj_test_data <- list(data = t(as(seuobj_data,"dgCMatrix")), label = seuobj_label)
+  seuobj_test <- xgb.DMatrix(data = seuobj_test_data$data,label = seuobj_test_data$label)
+  
+  #预测结果
+  predict_seuobj_test <- predict(bst_model, newdata = seuobj_test)
+  
+  predict_prop_seuobj <<- matrix(data=predict_seuobj_test, nrow = bst_model[["params"]][["num_class"]], 
+                                 ncol = ncol(seuobj), byrow = FALSE, 
+                                 dimnames = list(as.character(0:(bst_model[["params"]][["num_class"]]-1)), colnames(seuobj)))
+  
+  # predict cell types
+  # seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc,rownames(predict_prop_seuobj))
+  seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc2,rownames(predict_prop_seuobj))
+  
+  print("ARI =")
+  print(adjustedRandIndex(seuobj_res, seuobj_test_data$label))
+  
+  seuobj <- AddMetaData(seuobj, data.frame(t(predict_prop_seuobj), stringsAsFactors=F))
+  seuobj$projected_idents <- factor(seuobj_res) #save and update seurat object
+  return(seuobj)
+}
+
+## assign cell type predicted via tree models, consider confidence
+ident_assignfunc <- function(s, ident) {
+  if (max(s) > 1.5 / length(ident)) {
+    return(ident[which(s == max(s))])
+  } else {
+    return("unassigned")
+  }
+}
+
+ident_assignfunc2 <- function(s, ident) 
+  # confidence : max - 2th_max > 0.5
+{
+  if (max(s) - max(s[s!=max(s)]) > 0.5) {
+    return(ident[which(s == max(s))])
+  } else {
+    return("unassigned")
+  }
+}
+
+project2ref_celltype <- function(query_seuobj, ref_seuobj) # add ref_celltype to meta.data in query seurat object
+{
+  indentmap <- levels(ref_seuobj$seurat_clusters)
+  names(indentmap) <- levels(ref_seuobj$Classification1)
+  df <- query_seuobj$projected_idents
+  levels(df) <- c(names(indentmap),"unassigned")
+  query_seuobj$ref_celltype <- df
+  return(query_seuobj)
+}

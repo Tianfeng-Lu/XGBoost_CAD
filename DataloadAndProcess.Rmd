@@ -13,8 +13,6 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 source("./tianfengRwrappers.R")
 ```
 
-
-
 # 冠状动脉
 ## dataset from *Nat. Med.*
 ```{r}
@@ -107,3 +105,31 @@ saveRDS(human_coronary,"human_coronary.rds")
 saveRDS(CA_dataset1,"CA_dataset1.rds")
 saveRDS(CA_dataset2,"CA_dataset2.rds") #已经经过分组处理了
 ```
+
+```{r}
+Idents(CA_dataset2) <- CA_dataset2$conditions
+AC <- subset(CA_dataset2, idents = "AC")
+PA <- subset(CA_dataset2, idents = "PA")
+```
+
+```{r}
+AC <- AC %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20) %>% 
+  FindClusters(resolution = 0.1)
+PA <- PA %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20,seed.use = 20) %>% 
+  FindClusters(resolution = 0.1)
+```
+
+```{r}
+AC <- AC %>% RunUMAP(dims = 1:20,seed.use = 20) %>% 
+  FindClusters(resolution = 0.1)
+```
+```{r}
+SMC <- subset(AC,idents = c(1,4))
+```
+
+```{r}
+SMC <- SMC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+```
+

@@ -12,7 +12,7 @@ source("./tianfengRwrappers.R")
 # plan("multiprocess",workers = 8)
 ```
 
-# 读取结果
+# dataload
 ```{r}
 human_coronary <- readRDS("human_coronary.rds")
 CA_dataset1 <- readRDS("CA_dataset1.rds")
@@ -27,11 +27,6 @@ multi_featureplot(c("HEY1","GJA5","SEMA3G","CXCL12","SOX17","CDH5","PECAM1"),CA_
 multi_featureplot(c("ACKR1","PLVAP","ITGA6","PECAM1"),CA_dataset2)
 ```
 ```{r}
-# table(CA_dataset2$sample)
-
-# 关注cluster 3-6 EC
-# cluster 7 基质细胞
-
 multi_featureplot(c("LYZ","PTPRC","CD69","EPCAM","CDH1","PDGFRB","COL1A2","PECAM1","CLDN5"),CA_dataset2)
 
 Dotplot(c("LUM","MMP2","MGP","DCN","MYH11","ACTA2","CNN1","TAGLN"),CA_dataset2) #cluster 7 细胞可以被认为是modulated SMCs
@@ -54,51 +49,10 @@ saveRDS(lym_ds2,"lym_ds2.rds")
 
 # saveRDS(ds0,"ds0.rds")
 # saveRDS(ds1,"ds1.rds")
-
-```
-
-
-
-# ECs亚群分析 整合
-## 整合算法可能出现负值，运行SCENIC时舍弃了这些异常值
-```{r}
-# 提取内皮细胞亚群
-ECs_list <- list(subset(CA_dataset1, idents = "Endothelial"), subset(human_coronary, idents = "Endothelial"))
-
-ECs_list <- lapply(X = ECs_list, FUN = function(x) {
-  x <- NormalizeData(x)
-  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
-})
-# 需要分析的差异基因
-int_features <- SelectIntegrationFeatures(object.list = ECs_list)
-# 选择合并的anchor特征
-int_anchors <- FindIntegrationAnchors(object.list = ECs_list, anchor.features = int_features)
-
-# 根据anchor合并
-ECs_combined <- IntegrateData(anchorset = int_anchors)
-
-DefaultAssay(ECs_combined) <- "integrated"
-rm("ECs_list", "int_features", "int_anchors")
-```
-
-
-```{r}
-multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),human_coronary)
-multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset1)
-multi_featureplot(c("TNFRSF11B","ACTA2","CNN1","LUM"),CA_dataset2)
-```
-
-```{r}
-genes <- c("LGALS3","CD68","KLF4","CLDN5","VWF","ACTA2")
-multi_featureplot(genes,CA_dataset2)
-Dotplot(genes,CA_dataset2) # 2>5
-multi_featureplot(genes,human_coronary)
-Dotplot(genes,human_coronary)
 ```
 
 # 差异基因
 ```{r}
-umapplot(ds2,split.by = "conditions")
 ds2 <- ds2 %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.1)
 umapplot(ds2, group.by = "seurat_clusters",split.by = "conditions")
 Idents(ds2) <- ds2$conditions
@@ -137,31 +91,6 @@ Idents(AC_dataset2) <- AC_dataset2$Classification1
 Idents(PA_dataset2) <- PA_dataset2$Classification1
 umapplot(AC_dataset2)
 umapplot(PA_dataset2)
-```
-
-```{r}
-cl4_marker <- FindMarkers(ds2,ident.1 = 4,logfc.threshold = 0.5, min.diff.pct = 0.3)
-umapplot(ds2)
-```
-
-```{r}
-write.csv(cl4_marker,"cl4_marker.csv",row.names = F)
-
-DimPlot(ds2)
-```
-
-
-## dataset0 的modulated_SMC在哪里
-```{r, fig.width=6,fig.height=6}
-fibromyocyte_markers <- c("IGFBP2","BGN","DKK3","VCAN","RAMP1","SGCA","MYH10","FMOD","KRT8")
-multi_featureplot(fibromyocyte_markers,ds0)
-```
-
-## markers
-```{r}
-# ds2 <- readRDS("ds2.rds")
-ds2_markers <- FindAllMarkers(ds2,logfc.threshold = 0.5, min.diff.pct = 0.2, only.pos = T)
-write.csv(ds2_markers,"./datatable/ds2_markers.csv")
 ```
 
 

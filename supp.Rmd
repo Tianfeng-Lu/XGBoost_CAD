@@ -33,15 +33,14 @@ ggsave("dataset1_sampleinfo.svg",plot = umapplot(CA_dataset1, split.by = "orig.i
 ggsave("dataset0_sampleinfo.svg",plot = umapplot(human_coronary, split.by = "samples"),
        device = svg, width = 20, height = 5)
 
-```
-
-```{r}
+ggsave("ds2.svg",plot = umapplot(ds2), device = svg, width = 6, height = 5)
 ggsave("ds1.svg",plot = umapplot(ds1), device = svg, width = 6, height = 5)
+ggsave("ds0.svg",plot = umapplot(ds1), device = svg, width = 6, height = 5)
 ```
 
 
 # 附图：所有marker基因表达热图 show 表达量最高的top5
-### logfc.threshold = 0.5, min.diff.pct = 0.3 pct.1>0.7
+### logfc.threshold = 0.5, min.diff.pct = 0.3, pct.1 > 0.7
 dataset2
 ```{r}
 CA_dataset2_markers <- FindAllMarkers(CA_dataset2, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
@@ -53,7 +52,7 @@ svg(paste0("CA_dataset2_supp","_markers.svg"), height = 10, width = 15)
 dhm2(CA_dataset2_markers$gene, CA_dataset2, genes_to_show$gene,"CA_dataset2_supp")
 dev.off()
 ```
-dataset1
+## dataset1
 ```{r}
 CA_dataset1_markers <- FindAllMarkers(CA_dataset1, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
 CA_dataset1_markers <- CA_dataset1_markers[CA_dataset1_markers$pct.1>0.7,] %>% group_by(cluster) 
@@ -64,9 +63,7 @@ svg(paste0("CA_dataset1_supp","_markers.svg"), height = 10, width = 15)
 dhm2(CA_dataset1_markers$gene, CA_dataset1, genes_to_show$gene,"CA_dataset1_supp")
 dev.off()
 ```
-
-
-dataset0
+## dataset0
 ```{r}
 human_coronary_markers <- FindAllMarkers(human_coronary, logfc.threshold = 0.5, min.diff.pct = 0.3, only.pos = T)
 human_coronary_markers <- human_coronary_markers[human_coronary_markers$pct.1>0.7,] %>% group_by(cluster) 
@@ -164,7 +161,7 @@ prop_plot <- ggplot(plot_data, aes(x = `cell type`, y = proportion, fill = posit
 ggsave("CA_dataset2_prop.svg", device = svg, plot = prop_plot, width = 16, height = 6)
 ```
 
-# XGBoost feature
+# XGBoost feature plot
 ## pretrain AC--PA
 ```{r fig.width=6,fig.height=6}
 fea <- read.csv("./datatable/AC_features.csv")
@@ -201,7 +198,7 @@ ggsave("ds0model_features.png", device = png, plot = ggobj, width = 8, height = 
 
 
 
-## SMC2
+## SMC/marker features in SMC2 
 ```{r}
 Idents(ds2) <- ds2$Classification1
 ds2_SMC2 <- subset(ds2, ident = "SMC2")
@@ -270,7 +267,7 @@ dim(subset(ds2_SMC2, TAGLN>1))[2]
 dim(subset(ds2_SMC2, TAGLN>1&ACTA2>1))[2]
 ```
 
-## GO
+# GO for neural progenitor in ds2
 ```{r fig.width=12, fig.height=6}
 library(org.Hs.eg.db)
 enrich.go <- CA_dataset2_markers[CA_dataset2_markers$cluster == "Neural progenitor",]$gene %>% enrichGO(
@@ -289,8 +286,7 @@ plot <- dotplot(enrich.go, title = paste("Neural progenitor", "GO"), showCategor
 ggsave("GO_Neural progenitor.svg",device = svg,height = 6,width = 10, plot = plot)
 ```
 
-## BMP
-
+# BMP receptors in different dataset
 ```{r}
 Dotplot(c("BMPR1B","BMPR1A","BMPR2","ACVR2A"),ds0)
 Dotplot(c("BMPR1B","BMPR1A","BMPR2","ACVR2A"),ds1)
