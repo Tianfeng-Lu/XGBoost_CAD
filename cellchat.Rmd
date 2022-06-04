@@ -148,7 +148,7 @@ netVisual_individual(cor, signaling = pathways.show, pairLR.use = LR.show, layou
 
 LR_show <- data.frame(interaction_name = pairLR.BMP[c(2,4,6,8),]) #展示BMP作为配体
 
-netVisual_bubble(cor, sources.use = 4, targets.use = c(5:9), pairLR.use = LR_show, remove.isolate = F) #EC2 target
+netVisual_bubble(cor, sources.use = 4, targets.use = c(5:9), pairLR.use = LR_show, remove.isolate = F, return.data = T) #EC2 target
 
 ```
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

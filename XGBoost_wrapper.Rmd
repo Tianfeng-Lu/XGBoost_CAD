@@ -12,6 +12,7 @@ library(Matrix)
 library(mclust)
 library(tidyverse)
 library(SHAPforxgboost)
+library(lambda.r)
 
 ds0 <- readRDS("ds0.rds")
 ds1 <- readRDS("ds1.rds")
@@ -21,8 +22,8 @@ ds2 <- readRDS("ds2.rds")
 
 ```{r}
 XGBoost_train_from_seuobj <- function(seuobj, is_highvar = T, test_ratio = 0.3, seed = 7)
+{ 
   ## set test_ratio to 0 to avoid extracting test from dataset
-{
   set.seed(seed)
   seuobj_label <- as.numeric(as.character(Idents(seuobj)))
   if(is.na(seuobj_label[1])) # check vaild Idents
@@ -64,13 +65,14 @@ show_train_loss <- function(bst_model, nrounds = 100) #when $ test_ratio \neq 0 
            title = "train_loss", font = list(family = "Arial", size = 25, color = "black"))
 }
 
-XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed = 7)
-  #return a updated seurat object with new metadata named confidence and projected_idents 
+XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed = 7, celltype_assign = 2)
 {
+  #return a updated seurat object with new metadata named confidence and projected_idents
   seuobj_label <- as.numeric(as.character(Idents(seuobj)))
-  if(is.na(seuobj_label[1])) # check vaild Idents
+  if(!is.null(which(is.na(seuobj_label)))) # check vaild Idents
   {
-    stop("Please ensure that seurat idents are in numeric forms")
+    warning("Please ensure that seurat idents are in numeric forms") #这里似乎不跳出也可以
+    seuobj_label <- as.numeric(as.character(seuobj$seurat_clusters))
   }
   temp <- get_data_table(seuobj, highvar = T, type = "data")
   seuobj_data <- matrix(data = 0, nrow = bst_model$nfeatures, ncol = length(colnames(temp)), 
@@ -89,17 +91,25 @@ XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed 
   
   predict_prop_seuobj <<- matrix(data=predict_seuobj_test, nrow = bst_model[["params"]][["num_class"]], 
                              ncol = ncol(seuobj), byrow = FALSE, 
-                             dimnames = list(as.character(0:(bst_model[["params"]][["num_class"]]-1)), colnames(seuobj)))
+                             dimnames = list(as.character(0:(bst_model[["params"]][["num_class"]]-1)),
+                                             colnames(seuobj)))
 
   # predict cell types
-  # seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc,rownames(predict_prop_seuobj))
-  seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc2,rownames(predict_prop_seuobj))
+  if(celltype_assign == 1){
+    seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc,rownames(predict_prop_seuobj))
+  }else if(celltype_assign == 2){
+    seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc2,rownames(predict_prop_seuobj))
+  }
   
-  print("ARI =")
-  print(adjustedRandIndex(seuobj_res, seuobj_test_data$label))
+  print(paste('ARI =',adjustedRandIndex(seuobj_res, seuobj_test_data$label)))
   
   seuobj <- AddMetaData(seuobj, data.frame(t(predict_prop_seuobj), stringsAsFactors=F))
-  seuobj$projected_idents <- factor(seuobj_res) #save and update seurat object
+  print("return a seurat object with meta.data'X1'~'Xn'")
+  
+  #save and update seurat object
+  seuobj$projected_idents <- factor(seuobj_res, levels =
+                                      c(as.character(0:(bst_model[["params"]][["num_class"]]-1)),"unassigned"))
+  print("return a seurat object with meta.data'projected_idents'")
   return(seuobj)
 }
 
@@ -112,22 +122,28 @@ ident_assignfunc <- function(s, ident) {
       }
 }
 
-ident_assignfunc2 <- function(s, ident) 
-# confidence : max - 2th_max > 0.5
+ident_assignfunc2 <- function(s, ident)
+# confidence : max - 2th_max > 0.4
 {
-    if (max(s) - max(s[s!=max(s)]) > 0.5) {
+    if (max(s) - max(s[s!=max(s)]) > 0.4) {
           return(ident[which(s == max(s))])
       } else {
           return("unassigned")
       }
 }
 
-project2ref_celltype <- function(query_seuobj, ref_seuobj) # add ref_celltype to meta.data in query seurat object
+project2ref_celltype <- function(query_seuobj, ref_seuobj, 
+                                 query_labels = "projected_idents",
+                                 ref_labels = c("seurat_clusters","Classification1")) 
+  # transfer lables: add ref_celltype to meta.data in query seurat object
 {
-  indentmap <- levels(ref_seuobj$seurat_clusters)
-  names(indentmap) <- levels(ref_seuobj$Classification1)
-  df <- query_seuobj$projected_idents
-  levels(df) <- c(names(indentmap),"unassigned")
+  identmap <- levels(ref_seuobj@meta.data[[ref_labels[1]]]) 
+  ## build mapping between numeric labels and ref labels
+  names(identmap) <- levels(ref_seuobj@meta.data[[ref_labels[2]]]) 
+  
+  df <- query_seuobj@meta.data[[query_labels]]
+  lambda(x,identmap) %:=% ifelse(x=="unassigned",x,names(identmap[identmap == x]))
+  levels(df) <- lapply(levels(df), lambda, identmap) %>% as.character() # permute cell labels via `identmap`
   query_seuobj$ref_celltype <- df
   return(query_seuobj)
 }
@@ -147,14 +163,370 @@ show_train_loss(bst_model)
 ## function instance
 ### predict
 ```{r}
-ds1 <- XGBoost_predict_from_seuobj(ds1, bst_model = bst_model) %>% project2ref_celltype(ref_seuobj = ds2)
-umapplot(ds1, group.by = "ref_celltype")
+Idents(ds0) <- ds0$seurat_clusters
+ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model = bst_model) %>% 
+  project2ref_celltype(ref_seuobj = ds2, ref_labels = c("seurat_clusters","Classification1"))
+
+ds1 <- XGBoost_predict_from_seuobj(ds1, bst_model = bst_model) %>% 
+  project2ref_celltype(ref_seuobj = ds2, ref_labels = c("seurat_clusters","Classification1"))
+umapplot(ds0, group.by = "ref_celltype")
+
 ```
+## scmap wrapper
+```{r}
+library(SingleCellExperiment)
+library(scmap)
+
+mkref_scmap_from_seuobj <- function(ref_seuobj){
+  # return a ref sce object
+  ref_sce <- as.SingleCellExperiment(ref_seuobj)
+  logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
+  
+  counts(ref_sce) <- as.matrix(counts(ref_sce))
+  logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
+  
+  rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
+  ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
+  ref_sce <- selectFeatures(ref_sce, suppress_plot = T) %>% indexCell()
+
+  return(ref_sce)
+}
+
+query_scmap_from_refsce <- function(query_seuobj, ref_sce, ref_labels = 'Classification1'){
+  #return a updated seurat object with new metadata named scmap_idents
+  
+  query_sce <- as.SingleCellExperiment(query_seuobj)
+  logcounts(query_sce) <- log2(counts(query_sce) + 1)
+  
+  counts(query_sce) <- as.matrix(counts(query_sce))
+  logcounts(query_sce) <- as.matrix(logcounts(query_sce))
+  
+  rowData(query_sce)$feature_symbol <- rownames(query_sce)
+  query_sce <- query_sce[!duplicated(rownames(query_sce)), ]
+  query_sce <- selectFeatures(query_sce, suppress_plot = T) %>% indexCell()
+  
+  scmapCell_results <- scmapCell(query_sce, list(ref = metadata(ref_sce)$scmap_cell_index))
+  scmapCell_clusters <- scmapCell2Cluster(scmapCell_results,
+                                          list(as.character(colData(ref_sce)[[ref_labels]])))
+  
+  query_seuobj$scmap_idents <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ref"],
+                                        row.names = colnames(query_seuobj))
+  return(query_seuobj)
+}
+```
+
+```{r}
+ref_sce <- mkref_scmap_from_seuobj(ds2)
+ds0 <- query_scmap_from_refsce(ds0, ref_sce)
+ds1 <- query_scmap_from_refsce(ds1, ref_sce)
+umapplot(ds0, group.by = "scmap_idents")
+umapplot(ds0, group.by = "ref_celltype")
+table(ds0$ref_celltype)
+table(ds0$scmap_idents)
+adjustedRandIndex(ds0$ref_celltype, ds0$seurat_clusters)
+adjustedRandIndex(ds0$scmap_idents, ds0$seurat_clusters)
+
+```
+
+
 
 ## supervised vs unsupervised clustering
 ### upset plot
+#### SMC2
 ```{r}
-library()
+# library(UpSetR)
+
+df <- cbind(ds1[["Classification1"]],ds1[["ref_celltype"]],ds1[["scmap_idents"]])
+df <- df[df$Classification1 == "SMC2" | df$ref_celltype == "SMC2" | df$scmap_idents == "SMC2" ,]
+li <- table(df) %>% as.data.frame() #获得含有SMC2的frequency
+li <- li[!(li$Freq < 5),] #删除frequency<5的行
+li <- li[order(li$Freq,decreasing = T),]
+dd <- data.frame(li,index = as.character(1:nrow(li)))
+
+dd$index <- factor(dd$index,levels = 1:length(levels(dd$index)))
+dd$Freq <- NULL
+dd <- reshape2::melt(dd,id.var = "index")
+colnames(dd) <- c("index","type","name")
+
+dt <- data.frame(Freq = li$Freq,index = as.character(1:nrow(li)))
+dt$index <- factor(dt$index,levels = 1:length(levels(dt$index)))
+dt$col <- dt$Freq>(sum(dt$Freq)/10) #set the color to red for those frequency > 0.1
+
+p1 <- ggplot(dd)+geom_point(mapping = aes(x = index, y = type, color = name), size = 6) + mytheme2 + scale_color_manual(values = colors_list) + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank())
+p2 <- ggplot(dt,aes(x = index, y = Freq, fill = col))+geom_bar(stat = "identity") + mytheme2 + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank(), legend.position = 'none') + scale_fill_manual(values = c("black","red"))
+ 
+plot <- cowplot::plot_grid(p2,p1,ncol = 1,align = 'v',rel_heights = c(2,1))
+plot
+# ggsave("SMC2cells.svg",plot=plot,device = svg,height = 8,width = 8)
+```
+
+#### SMC1
+```{r}
+df <- cbind(ds1[["Classification1"]],ds1[["ref_celltype"]],ds1[["scmap_idents"]])
+df <- df[df$Classification1 == "SMC1" | df$ref_celltype == "SMC1" | df$scmap_idents == "SMC1" ,]
+li <- table(df) %>% as.data.frame() #获得含有SMC1的frequency
+li <- li[!(li$Freq < 5),] #删除frequency<5的行
+li <- li[order(li$Freq,decreasing = T),]
+dd <- data.frame(li,index = as.character(1:nrow(li)))
+
+dd$index <- factor(dd$index,levels = 1:length(levels(dd$index)))
+dd$Freq <- NULL
+dd <- reshape2::melt(dd,id.var = "index")
+colnames(dd) <- c("index","type","name")
+
+dt <- data.frame(Freq = li$Freq,index = as.character(1:nrow(li)))
+dt$index <- factor(dt$index,levels = 1:length(levels(dt$index)))
+dt$col <- dt$Freq>(sum(dt$Freq)/10) #set the color to red for those frequency > 0.1
+
+p1 <- ggplot(dd)+geom_point(mapping = aes(x = index, y = type, color = name), size = 6) + mytheme2 + scale_color_manual(values = colors_list) + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank())
+p2 <- ggplot(dt,aes(x = index, y = Freq, fill = col))+geom_bar(stat = "identity") + mytheme2 + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank(), legend.position = 'none') + scale_fill_manual(values = c("black","red"))
+ 
+plot <- cowplot::plot_grid(p2,p1,ncol = 1,align = 'v',rel_heights = c(2,1))
+plot
+ggsave("SMC1cells.svg",plot=plot,device = svg,height = 8,width = 8)
+```
+
+#### FBM
+```{r}
+df <- cbind(ds1[["Classification1"]],ds1[["ref_celltype"]],ds1[["scmap_idents"]])
+df <- df[df$Classification1 == "Fibromyocyte" | df$ref_celltype == "Fibromyocyte" | df$scmap_idents == "Fibromyocyte" ,]
+li <- table(df) %>% as.data.frame() #获得含有Fibromyocyte的frequency
+li <- li[!(li$Freq < 5),] #删除frequency<5的行
+li <- li[order(li$Freq,decreasing = T),]
+dd <- data.frame(li,index = as.character(1:nrow(li)))
+
+dd$index <- factor(dd$index,levels = 1:length(levels(dd$index)))
+dd$Freq <- NULL
+dd <- reshape2::melt(dd,id.var = "index")
+colnames(dd) <- c("index","type","name")
+
+dt <- data.frame(Freq = li$Freq,index = as.character(1:nrow(li)))
+dt$index <- factor(dt$index,levels = 1:length(levels(dt$index)))
+dt$col <- dt$Freq>(sum(dt$Freq)/10) #set the color to red for those frequency > 0.1
+
+p1 <- ggplot(dd)+geom_point(mapping = aes(x = index, y = type, color = name), size = 6) + mytheme2 + scale_color_manual(values = colors_list) + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank())
+p2 <- ggplot(dt,aes(x = index, y = Freq, fill = col))+geom_bar(stat = "identity") + mytheme2 + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank(), legend.position = 'none') + scale_fill_manual(values = c("black","red"))
+ 
+plot <- cowplot::plot_grid(p2,p1,ncol = 1,align = 'v',rel_heights = c(2,1))
+plot
+ggsave("Fibromyocytecells.svg",plot=plot,device = svg,height = 8,width = 8)
+```
+
+## correlation plot
+```{r}
+scmap <- ds1$scmap_idents
+xgb <- ds1$ref_celltype
+ref <- ds2$Classification1
+
+geneset1 <- read.table("SMC")
+ds1 <- AddModuleScore(ds1,features = geneset1, name = 'SMC_score')
+ds2 <- AddModuleScore(ds2,features = geneset1, name = 'SMC_score')
+geneset2 <- read.table("FB")
+ds1 <- AddModuleScore(ds1,features = geneset2, name = 'FB_score')
+ds2 <- AddModuleScore(ds2,features = geneset2, name = 'FB_score')
+# f("SMC_score1",label = F, ds1) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+# f("SMC_score1",label = F, ds2) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+
+df1 <- data.frame(FetchData(ds1, c("SMC_score1","FB_score1"), cells = names(scmap[scmap == "Fibromyocyte"])),type = "scmap") 
+df2 <- data.frame(FetchData(ds1,c("SMC_score1","FB_score1"), cells = names(xgb[xgb == "Fibromyocyte"])),type = "xgbtree") 
+df3 <- data.frame(FetchData(ds2,c("SMC_score1","FB_score1"), cells = names(ref[ref == "Fibromyocyte"])),type = "reference") 
+
+df <- rbind(df1,df2,df3)
+
+ggboxplot(df, x = "type", y = "SMC_score1", color = "type", add = "jitter") +
+  stat_compare_means(comparisons =
+                       list(c("scmap","reference"),c("xgbtree","reference")), 
+                     method = "wilcox.test") 
+
+ggboxplot(df, x = "type", y = "FB_score1", color = "type", add = "jitter") +
+  stat_compare_means(comparisons =
+                       list(c("scmap","reference"),c("xgbtree","reference")), 
+                     method = "wilcox.test") 
+
+df <- data.frame(row.names = selected_features)
+for(cell_type in c("SMC1","Fibromyocyte","SMC2")){
+  df1 <- data.frame(FetchData(ds1, selected_features, cells = names(scmap[scmap == cell_type]))) %>% colMeans() 
+  df2 <- data.frame(FetchData(ds1, selected_features, cells = names(xgb[xgb == cell_type]))) %>% colMeans()
+  df3 <- data.frame(FetchData(ds2, selected_features, cells = names(ref[ref == cell_type]))) %>% colMeans()
+  df[paste0("ref_",cell_type)] <- df3
+  df[paste0("xgb_",cell_type)] <- df2
+  df[paste0("scmap_",cell_type)] <- df1
+}
+
+corr <- cor(df)
+pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
+        color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
+        border_color = NA, cluster_rows = T, cluster_cols = T,
+        main = "corr", angle_col = 45, show_rownames = T)
+
+library(ggcor)
+quickcor(df, type = "upper") + geom_circle2()
+```
+### PCA
+```{r}
+selected_features <-intersect(FindVariableFeatures(ds1, nfeatures = 200)@assays[["SCT"]]@var.features,
+                              FindVariableFeatures(ds2, nfeatures = 200)@assays[["SCT"]]@var.features)
+
+selected_features <- read.csv("./datatable/ds2_features.csv")
+selected_features <- as.character(selected_features$Feature[1:50])
+selected_features <- intersect(selected_features, VariableFeatures(ds1))
+res <- data.frame(row.names = c("A","B","C"))
+
+for(cell_type in c("SMC1","Fibromyocyte","SMC2")){
+  df1 <- data.frame(FetchData(ds1, selected_features, cells = names(scmap[scmap == cell_type])),type = "scmap") 
+  df2 <- data.frame(FetchData(ds1,selected_features, cells = names(xgb[xgb == cell_type])),type = "xgbtree") 
+  df3 <- data.frame(FetchData(ds2,selected_features, cells = names(ref[ref == cell_type])),type = "reference") 
+  
+  df <- rbind(df1,df2,df3)
+  
+  PCAres <- FactoMineR::PCA(df[,c(-ncol(df))],ncp = 5, graph = F)
+  
+  dd <- cbind(PCAres[["ind"]][["coord"]],data.frame(type = df[,c(ncol(df))]))
+  
+  # ggplot(dd)+geom_point(aes(x = Dim.1, y = Dim.2, color = type))
+  v_scmap <- dd[dd$type == "scmap",c(1:5)] %>% colMeans() %>% as.matrix()
+  v_xgb <- dd[dd$type == "xgbtree",c(1:5)] %>% colMeans() %>% as.matrix()
+  v_ref <- dd[dd$type == "reference",c(1:5)] %>% colMeans() %>% as.matrix()
+  v <- c(norm(v_scmap-v_ref),norm(v_xgb-v_ref),norm(v_xgb-v_scmap))
+  res[cell_type] <- v
+}
+res
+```
+
+
+## unsupervised version
+```{r}
+umapplot(ds1)
+umapplot(ds2)
+umapplot(ds0)
+
+bst_model <- XGBoost_train_from_seuobj(ds0)
+ds2 <- XGBoost_predict_from_seuobj(ds2,bst_model,celltype_assign = 1)
+# Idents(ds2) <- ds2$seurat_clusters
+bst_model <- XGBoost_train_from_seuobj(ds2)
+ds0 <- XGBoost_predict_from_seuobj(ds0,bst_model,celltype_assign = 1)
+
+umapplot(ds2,group.by = "projected_idents")
+confuse_matrix <- table(ds2$seurat_clusters, ds2$projected_idents, dnn=c("true","pre"))
+
+sankey_plot(confuse_matrix = confuse_matrix,
+            dimnames(confuse_matrix)$pre,dimnames(confuse_matrix)$true,
+            session = "ds2 is projected to ds1")
+
+# choose train dataset (merged)
+
+df <- cbind(ds2[["seurat_clusters"]],ds2[["projected_idents"]])
+li <- table(df) %>% as.data.frame() 
+li <- li[!(li$Freq < 50),] #删除frequency<50的细胞类型组合
+li <- li[order(li$Freq,decreasing = T),]
+dd <- data.frame(li,index = as.character(1:nrow(li)))
+
+
+confuse_matrix[confuse_matrix<50] <- 0 #删除frequency<50的细胞类型
+confuse_matrix
+
+
+# find embedding pattern
+temp <- prop.table(confuse_matrix,margin = 1) #unsupervised labels关于supervised labels的组成
+temp2 <- prop.table(confuse_matrix,margin = 2) #supervised labels关于unsupervised labels的组成
+
+temp[is.na(temp)] <- 0
+temp2[is.na(temp2)] <- 0
+
+tempm <- reshape2::melt(temp)
+
+td <- c()
+for(i in which(temp>0.7)){
+  if(temp2[i] < 0.7){
+    td <- append(td,i)
+  }
+}
+tempm <- tempm[td,] #保存点对(unsupervised clusters, supervised clusters)
+tempm$value <- NULL
+
+##修改用来构造初始树模型的数据集(ds0)分群
+ref_idents <- ds0$seurat_clusters #最开始用来构造树的分类
+
+for(celltype in tempm$true){
+  n <- names(ds0$projected_idents[ds0$projected_idents == celltype]) ##需要改变为embedding的细胞
+  ref_idents <- factor(ref_idents, levels = c(levels(ref_idents),10+celltype))
+  ref_idents[n] <- 10+celltype
+  
+}
+Idents(ds0) <- ref_idents
+
+
+##用来修正树的数据集(ds2)分群
+mod_idents <- ds2$projected_idents
+for(celltype in tempm$true){
+  n <- names(ds2$seurat_clusters[ds2$seurat_clusters == celltype]) ##需要改变为embedding的细胞
+  mod_idents <- factor(mod_idents, levels = c(levels(mod_idents),10+celltype))
+  mod_idents[n] <- 10+celltype
+}
+### ds2的独特细胞类型，判断embedding模式
+
+df <- table(ds0$projected_idents) %>% prop.table()
+unique_celltypes <- as.numeric(names(df[df<0.01])) #投射之后少于1%，使用无监督分群
+# table(ds0$projected_idents)
+for(celltype in unique_celltypes){
+  n <- names(ds2$seurat_clusters[ds2$seurat_clusters == celltype]) ##需要改变为embedding的细胞
+  mod_idents <- factor(mod_idents, levels = c(levels(mod_idents),20+celltype))
+  mod_idents[n] <- 20+celltype
+}
+
+
+# umapplot(ds2,"projected_idents")
+Idents(ds2) <- mod_idents
+
+mergeds <- merge(ds0,subset(ds2,idents = "unassigned",invert = T))
+levels(Idents(mergeds)) <- c(0:(length(levels(Idents(mergeds)))-1)) ##重命名因子水平
+seuobj_label <- as.numeric(as.character(Idents(mergeds))) #原始训练数据
+
+temp <- as.matrix(GetAssayData(mergeds, slot = "data"))
+genelist <- GetAssayData(ds0, slot = "var.features")
+temp <- temp[genelist, ] # 过滤高变异基因
+
+seuobj_data <- matrix(data = 0, nrow = bst_model$nfeatures, ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(bst_model[["feature_names"]],colnames(temp)))
+intersect_features <- intersect(bst_model[["feature_names"]], rownames(temp))
+seuobj_data[intersect_features,] <- temp[intersect_features,]
+rm(temp)
+
+## 额外增加的细胞信息
+
+xgb_param <- list(eta = 0.2, max_depth = 6, 
+                subsample = 0.6,  num_class = length(table(Idents(mergeds))),
+                objective = "multi:softprob", eval_metric = 'mlogloss')
+
+
+seuobj_train_data <- list(data = t(as(seuobj_data,"dgCMatrix")), label = seuobj_label) 
+# use whole dataset as train data
+seuobj_train <- xgb.DMatrix(data = seuobj_train_data$data,label = seuobj_train_data$label)
+bst_model <- xgb.train(xgb_param, seuobj_train, nrounds = 50, verbose = 0)
+
+
+ds0 <- XGBoost_predict_from_seuobj(ds0,bst_model)
+ds1 <- XGBoost_predict_from_seuobj(ds1,bst_model)
+ds2 <- XGBoost_predict_from_seuobj(ds2,bst_model)
+```
+
+
+```{r fig.width=4, fig.height=8}
+umapplot(ds0,"projected_idents") /
+umapplot(ds1,"projected_idents") /
+umapplot(ds2,"projected_idents")
+
+
+levels(ds0$projected_idents)
+```
+
+```{r}
+# mergeds <- mergeds %>% SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+#     RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+#     RunUMAP(dims = 1:20) %>% 
+#     FindClusters(resolution = 0.1)
+# 
+# umapplot(mergeds,group.by = "Classification1" ,split.by = "orig.ident")
 ```
 
 

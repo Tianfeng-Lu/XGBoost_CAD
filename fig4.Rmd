@@ -59,8 +59,34 @@ radarchart(data, axistype=0, seg = 5,
 legend(x=-1.6, y=0.5, legend = rownames(data[-c(1,2),]), bty = "n", pch=20 , col=colors_border, text.col = "black", cex=1, pt.cex=2)
 dev.off()
 ```
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+## bubble matrix for CellChat
+```{r fig.width=4, fig.height=4}
+cor <- readRDS("EC_SMC_cellchat.rds")
+pathways.show <- c("BMP")
+pairLR.BMP <- extractEnrichedLR(cor, signaling = pathways.show, geneLR.return = FALSE,thresh = 0.001)
+LR_show <- data.frame(interaction_name = pairLR.BMP[c(2,4,6,8),]) #展示BMP作为配体
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+draw_data <- netVisual_bubble(cor, sources.use = 4, targets.use = c(5:9), pairLR.use = LR_show, remove.isolate = F, return.data = T)
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+ggobj <- ggplot(data = draw_data$communication) + 
+  geom_point(aes(x = source.target, y = interaction_name_2, size = prob, color = prob)) + 
+  theme(plot.title = element_text(size = 15,color="black",hjust = 0.5),
+        panel.background = element_rect(fill = "white",colour = "black"),
+        axis.title = element_text(size = 15,color ="black"), 
+        axis.text = element_text(size = 15,color = "black"),
+        axis.text.x = element_text(angle = 45, hjust = 1 ),
+        panel.grid = element_line(colour = "lightgrey"),
+        legend.position = "top",
+        legend.text = element_text(size= 15),
+        legend.title= element_text(size= 15)) + 
+  scale_color_continuous(type = "viridis") + scale_size_continuous(range=c(1,10))
+
+ggsave("BMPsignaling.svg",plot = ggobj, height = 8, width = 8, device = svg)
+ggsave("BMPsignaling.png",plot = ggobj, height = 8, width = 8, device = png)
+```
+
+
+
+
+
+

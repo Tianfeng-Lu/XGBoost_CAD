@@ -40,8 +40,9 @@ scmapCell_clusters <- scmapCell2Cluster(
   scmapCell_results, 
   list(as.character(colData(ref_sce)$Classification1)))
 
-temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds0))
-Idents(ds0) <- temp
+ds0$scmap_idents <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds0"],row.names = colnames(ds0))
+
+
 ggsave("./scmap/scmap_ds0tods0.svg", device = svg, width = 6, height = 4, plot = umapplot(ds0))
 
 fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
