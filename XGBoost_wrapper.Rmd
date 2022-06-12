@@ -107,8 +107,9 @@ XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed 
   print("return a seurat object with meta.data'X1'~'Xn'")
   
   #save and update seurat object
-  seuobj$projected_idents <- factor(seuobj_res, levels =
-                                      c(as.character(0:(bst_model[["params"]][["num_class"]]-1)),"unassigned"))
+  seuobj$projected_idents <- 
+    factor(seuobj_res, levels=c(as.character(0:(bst_model[["params"]][["num_class"]]-1)),"unassigned"))
+  
   print("return a seurat object with meta.data'projected_idents'")
   return(seuobj)
 }
@@ -262,28 +263,32 @@ plot
 
 #### SMC1
 ```{r}
-df <- cbind(ds1[["Classification1"]],ds1[["ref_celltype"]],ds1[["scmap_idents"]])
-df <- df[df$Classification1 == "SMC1" | df$ref_celltype == "SMC1" | df$scmap_idents == "SMC1" ,]
-li <- table(df) %>% as.data.frame() #获得含有SMC1的frequency
-li <- li[!(li$Freq < 5),] #删除frequency<5的行
-li <- li[order(li$Freq,decreasing = T),]
-dd <- data.frame(li,index = as.character(1:nrow(li)))
-
-dd$index <- factor(dd$index,levels = 1:length(levels(dd$index)))
-dd$Freq <- NULL
-dd <- reshape2::melt(dd,id.var = "index")
-colnames(dd) <- c("index","type","name")
-
-dt <- data.frame(Freq = li$Freq,index = as.character(1:nrow(li)))
-dt$index <- factor(dt$index,levels = 1:length(levels(dt$index)))
-dt$col <- dt$Freq>(sum(dt$Freq)/10) #set the color to red for those frequency > 0.1
-
-p1 <- ggplot(dd)+geom_point(mapping = aes(x = index, y = type, color = name), size = 6) + mytheme2 + scale_color_manual(values = colors_list) + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank())
-p2 <- ggplot(dt,aes(x = index, y = Freq, fill = col))+geom_bar(stat = "identity") + mytheme2 + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank(), legend.position = 'none') + scale_fill_manual(values = c("black","red"))
- 
-plot <- cowplot::plot_grid(p2,p1,ncol = 1,align = 'v',rel_heights = c(2,1))
+upsetplot_celltype <- function(seuobj, cell_type){
+  # draw upset plot for the given cell type
+  df <- cbind(seuobj[["Classification1"]],seuobj[["ref_celltype"]],seuobj[["scmap_idents"]])
+  df <- df[df$Classification1 == cell_type | df$ref_celltype == cell_type | df$scmap_idents == cell_type,]
+  li <- table(df) %>% as.data.frame() #获得含有SMC1的frequency
+  li <- li[!(li$Freq < 5),] #删除frequency<5的行
+  li <- li[order(li$Freq,decreasing = T),]
+  dd <- data.frame(li,index = as.character(1:nrow(li)))
+  
+  dd$index <- factor(dd$index,levels = 1:length(levels(dd$index)))
+  dd$Freq <- NULL
+  dd <- reshape2::melt(dd,id.var = "index")
+  colnames(dd) <- c("index","type","name")
+  
+  dt <- data.frame(Freq = li$Freq,index = as.character(1:nrow(li)))
+  dt$index <- factor(dt$index,levels = 1:length(levels(dt$index)))
+  dt$col <- dt$Freq>(sum(dt$Freq)/10) #set the color to red for those frequency > 0.1
+  
+  p1 <- ggplot(dd)+geom_point(mapping = aes(x = index, y = type, color = name), size = 6) + mytheme2 + scale_color_manual(values = colors_list, drop = F) + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank())
+  p2 <- ggplot(dt,aes(x = index, y = Freq, fill = col))+geom_bar(stat = "identity") + mytheme2 + theme(axis.ticks.x = element_blank(),axis.title.x = element_blank(), legend.position = 'none') + scale_fill_manual(values = c("black","red"))
+   
+  plot <- cowplot::plot_grid(p2,p1,ncol = 1,align = 'v',rel_heights = c(2,1))
+}
+plot <- upsetplot_celltype(ds0,"Fibromyocyte")
 plot
-ggsave("SMC1cells.svg",plot=plot,device = svg,height = 8,width = 8)
+# ggsave("SMC1cells.svg",plot=plot,device = svg,height = 8,width = 8)
 ```
 
 #### FBM
@@ -314,23 +319,80 @@ ggsave("Fibromyocytecells.svg",plot=plot,device = svg,height = 8,width = 8)
 
 ## correlation plot
 ```{r}
+geneset1 <- read.table("SMC")
+ds0 <- AddModuleScore(ds0,features = geneset1, name = 'SMC_score')
+ds1 <- AddModuleScore(ds1,features = geneset1, name = 'SMC_score')
+ds2 <- AddModuleScore(ds2,features = geneset1, name = 'SMC_score')
+geneset2 <- read.table("FB2")
+ds0 <- AddModuleScore(ds0,features = geneset2, name = 'FB_score')
+ds1 <- AddModuleScore(ds1,features = geneset2, name = 'FB_score')
+ds2 <- AddModuleScore(ds2,features = geneset2, name = 'FB_score')
+geneset3 <- read.table("FBM")
+ds0 <- AddModuleScore(ds0,features = geneset3, name = 'FBM_score')
+ds1 <- AddModuleScore(ds1,features = geneset3, name = 'FBM_score')
+ds2 <- AddModuleScore(ds2,features = geneset3, name = 'FBM_score')
+f("FBM_score1",label = F, ds1) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+f("FBM_score1",label = F, ds2) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+f("FBM_score1",label = F, ds0) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+```
+
+## GSVA
+```{r}
+library(msigdbr)
+library(GSVA)
+library(fgsea)
+
+exprmat <- get_data_table(ds2, highvar = T,type = "data")
+clusterinfo <- ds2@meta.data[,c("orig.ident","Classification1")]
+mbd <- msigdbr(species = "Homo sapiens", category = "C2")
+mbd <- mbd[mbd$gs_name == "CUI_TCF21_TARGETS_UP",]
+msigdbr_list <- split(x = mbd$gene_symbol, f = mbd$gs_name)
+
+gsva_res <- gsva(exprmat, msigdbr_list, kcdf="Gaussian",method = "gsva", parallel.sz = 6) #gsva 在server上运行
+# pheatmap(gsva_res, show_rownames=1, show_colnames=0, 
+#          annotation_col=clusterinfo,fontsize_row=5, wiidth=8, height=6)#绘制热图
+
+es <- data.frame(t(gsva_res),stringsAsFactors=F)  #添加到单细胞矩阵中，可视化相关通路的在umap上聚集情况，可理解为一个通路即一个基因
+ds2 <- AddMetaData(ds2, es)
+f("CUI_TCF21_TARGETS_UP", ds2)
+
+exprmat <- get_data_table(ds1, highvar = T,type = "data")
+clusterinfo <- ds1@meta.data[,c("orig.ident","Classification1")]
+mbd <- msigdbr(species = "Homo sapiens", category = "C2")
+mbd <- mbd[mbd$gs_name == "CUI_TCF21_TARGETS_UP",]
+msigdbr_list <- split(x = mbd$gene_symbol, f = mbd$gs_name)
+
+gsva_res <- gsva(exprmat, msigdbr_list, kcdf="Gaussian",method = "gsva", parallel.sz = 6) #gsva 在server上运行
+es <- data.frame(t(gsva_res),stringsAsFactors=F)
+ds1 <- AddMetaData(ds1, es)
+
+exprmat <- get_data_table(ds0, highvar = T,type = "data")
+clusterinfo <- ds0@meta.data[,c("orig.ident","Classification1")]
+mbd <- msigdbr(species = "Homo sapiens", category = "C2")
+mbd <- mbd[mbd$gs_name == "CUI_TCF21_TARGETS_UP",]
+msigdbr_list <- split(x = mbd$gene_symbol, f = mbd$gs_name)
+
+gsva_res <- gsva(exprmat, msigdbr_list, kcdf="Gaussian",method = "gsva", parallel.sz = 6) #gsva 在server上运行
+es <- data.frame(t(gsva_res),stringsAsFactors=F)
+ds0 <- AddMetaData(ds0, es)
+
+f("CUI_TCF21_TARGETS_UP",cols = c("#1E90FF", "#ff2121"), ds2)
+f("CUI_TCF21_TARGETS_UP", cols = c("#1E90FF", "#ff2121"),ds1)
+f("CUI_TCF21_TARGETS_UP", cols = c("#1E90FF", "#ff2121"),ds0)
+```
+
+```{r}
 scmap <- ds1$scmap_idents
 xgb <- ds1$ref_celltype
 ref <- ds2$Classification1
 
-geneset1 <- read.table("SMC")
-ds1 <- AddModuleScore(ds1,features = geneset1, name = 'SMC_score')
-ds2 <- AddModuleScore(ds2,features = geneset1, name = 'SMC_score')
-geneset2 <- read.table("FB")
-ds1 <- AddModuleScore(ds1,features = geneset2, name = 'FB_score')
-ds2 <- AddModuleScore(ds2,features = geneset2, name = 'FB_score')
-# f("SMC_score1",label = F, ds1) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
-# f("SMC_score1",label = F, ds2) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
-
-df1 <- data.frame(FetchData(ds1, c("SMC_score1","FB_score1"), cells = names(scmap[scmap == "Fibromyocyte"])),type = "scmap") 
-df2 <- data.frame(FetchData(ds1,c("SMC_score1","FB_score1"), cells = names(xgb[xgb == "Fibromyocyte"])),type = "xgbtree") 
-df3 <- data.frame(FetchData(ds2,c("SMC_score1","FB_score1"), cells = names(ref[ref == "Fibromyocyte"])),type = "reference") 
-
+cell_type <- "Fibromyocyte"
+df1 <- data.frame(FetchData(ds1, c("SMC_score1","FB_score1","CUI_TCF21_TARGETS_UP"), 
+                            cells = names(scmap[scmap == cell_type])),type = "scmap") 
+df2 <- data.frame(FetchData(ds1,c("SMC_score1","FB_score1","CUI_TCF21_TARGETS_UP"), 
+                            cells = names(xgb[xgb == cell_type])),type = "xgbtree") 
+df3 <- data.frame(FetchData(ds2,c("SMC_score1","FB_score1","CUI_TCF21_TARGETS_UP"), 
+                            cells = names(ref[ref == cell_type])),type = "reference") 
 df <- rbind(df1,df2,df3)
 
 ggboxplot(df, x = "type", y = "SMC_score1", color = "type", add = "jitter") +
@@ -341,8 +403,34 @@ ggboxplot(df, x = "type", y = "SMC_score1", color = "type", add = "jitter") +
 ggboxplot(df, x = "type", y = "FB_score1", color = "type", add = "jitter") +
   stat_compare_means(comparisons =
                        list(c("scmap","reference"),c("xgbtree","reference")), 
-                     method = "wilcox.test") 
+                     method = "wilcox.test")
+```
+### XGBoost tree among datasets
+```{r}
+cell_type <- "Fibromyocyte"
+features <- c("SMC_score1","FB_score1","FBM_score1","CUI_TCF21_TARGETS_UP","DCN")
+df1 <- data.frame(FetchData(ds0, features, 
+                            cells = names(ds0$ref_celltype[ds0$ref_celltype == cell_type])),type = "ds0") 
+df2 <- data.frame(FetchData(ds1,features, 
+                            cells = names(ds1$ref_celltype[ds1$ref_celltype == cell_type])),type = "ds1") 
+df3 <- data.frame(FetchData(ds2,features, 
+                            cells = names(ds2$Classification1[ds2$Classification1 == cell_type])),type = "ds2")
 
+df4 <- data.frame(FetchData(ds0, features, 
+                            cells = names(ds0$scmap_idents[ds0$scmap_idents == cell_type])),type = "scmapds0") 
+df5 <- data.frame(FetchData(ds1, features, 
+                            cells = names(ds1$scmap_idents[ds1$scmap_idents == cell_type])),type = "scmapds1") 
+
+df <- rbind(df1,df2,df3,df4,df5)
+
+ggboxplot(df, x = "type", y = "CUI_TCF21_TARGETS_UP", color = "type", add = "jitter") +
+  stat_compare_means(comparisons =
+                       list(c("ds0","ds2"),c("ds1","ds2"),c("scmapds0","ds2"),c("scmapds1","ds2")), 
+                     method = "wilcox.test") 
+```
+
+
+```{r}
 df <- data.frame(row.names = selected_features)
 for(cell_type in c("SMC1","Fibromyocyte","SMC2")){
   df1 <- data.frame(FetchData(ds1, selected_features, cells = names(scmap[scmap == cell_type]))) %>% colMeans() 
@@ -365,17 +453,18 @@ quickcor(df, type = "upper") + geom_circle2()
 ### PCA
 ```{r}
 selected_features <-intersect(FindVariableFeatures(ds1, nfeatures = 200)@assays[["SCT"]]@var.features,
-                              FindVariableFeatures(ds2, nfeatures = 200)@assays[["SCT"]]@var.features)
+                              FindVariableFeatures(ds2, nfeatures = 200)@assays[["SCT"]]@var.features) %>%
+  intersect(FindVariableFeatures(ds0, nfeatures = 200)@assays[["SCT"]]@var.features)
 
-selected_features <- read.csv("./datatable/ds2_features.csv")
-selected_features <- as.character(selected_features$Feature[1:50])
-selected_features <- intersect(selected_features, VariableFeatures(ds1))
+# selected_features <- read.csv("./datatable/ds2_features.csv")
+# selected_features <- as.character(selected_features$Feature[1:50])
+# selected_features <- intersect(selected_features, VariableFeatures(ds1)) %>% intersect(VariableFeatures(ds0))
 res <- data.frame(row.names = c("A","B","C"))
 
-for(cell_type in c("SMC1","Fibromyocyte","SMC2")){
-  df1 <- data.frame(FetchData(ds1, selected_features, cells = names(scmap[scmap == cell_type])),type = "scmap") 
-  df2 <- data.frame(FetchData(ds1,selected_features, cells = names(xgb[xgb == cell_type])),type = "xgbtree") 
-  df3 <- data.frame(FetchData(ds2,selected_features, cells = names(ref[ref == cell_type])),type = "reference") 
+for(cell_type in c("SMC1","Fibromyocyte")){
+  df1 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0$ref_celltype[ds0$ref_celltype == cell_type])),type = "ds0") 
+  df2 <- data.frame(FetchData(ds1,selected_features, cells = names(ds1$ref_celltype[ds1$ref_celltype == cell_type])),type = "ds1") 
+  df3 <- data.frame(FetchData(ds2,selected_features, cells = names(ds2$Classification1[ds2$Classification1 == cell_type])),type = "ds2") 
   
   df <- rbind(df1,df2,df3)
   
@@ -384,10 +473,10 @@ for(cell_type in c("SMC1","Fibromyocyte","SMC2")){
   dd <- cbind(PCAres[["ind"]][["coord"]],data.frame(type = df[,c(ncol(df))]))
   
   # ggplot(dd)+geom_point(aes(x = Dim.1, y = Dim.2, color = type))
-  v_scmap <- dd[dd$type == "scmap",c(1:5)] %>% colMeans() %>% as.matrix()
-  v_xgb <- dd[dd$type == "xgbtree",c(1:5)] %>% colMeans() %>% as.matrix()
-  v_ref <- dd[dd$type == "reference",c(1:5)] %>% colMeans() %>% as.matrix()
-  v <- c(norm(v_scmap-v_ref),norm(v_xgb-v_ref),norm(v_xgb-v_scmap))
+  v_ds0 <- dd[dd$type == "ds0",c(1:5)] %>% colMeans() %>% as.matrix()
+  v_ds1 <- dd[dd$type == "ds1",c(1:5)] %>% colMeans() %>% as.matrix()
+  v_ds2 <- dd[dd$type == "ds2",c(1:5)] %>% colMeans() %>% as.matrix()
+  v <- c(norm(v_ds0-v_ds2),norm(v_ds1-v_ds2),norm(v_ds0-v_ds1))
   res[cell_type] <- v
 }
 res
@@ -413,18 +502,16 @@ sankey_plot(confuse_matrix = confuse_matrix,
             dimnames(confuse_matrix)$pre,dimnames(confuse_matrix)$true,
             session = "ds2 is projected to ds1")
 
-# choose train dataset (merged)
 
-df <- cbind(ds2[["seurat_clusters"]],ds2[["projected_idents"]])
-li <- table(df) %>% as.data.frame() 
-li <- li[!(li$Freq < 50),] #删除frequency<50的细胞类型组合
-li <- li[order(li$Freq,decreasing = T),]
-dd <- data.frame(li,index = as.character(1:nrow(li)))
+# df <- cbind(ds2[["seurat_clusters"]],ds2[["projected_idents"]])
+# li <- table(df) %>% as.data.frame() 
+# li <- li[!(li$Freq < 50),] #删除frequency<50的细胞类型组合
+# li <- li[order(li$Freq,decreasing = T),]
+# dd <- data.frame(li,index = as.character(1:nrow(li)))
 
 
 confuse_matrix[confuse_matrix<50] <- 0 #删除frequency<50的细胞类型
 confuse_matrix
-
 
 # find embedding pattern
 temp <- prop.table(confuse_matrix,margin = 1) #unsupervised labels关于supervised labels的组成
@@ -432,7 +519,6 @@ temp2 <- prop.table(confuse_matrix,margin = 2) #supervised labels关于unsupervi
 
 temp[is.na(temp)] <- 0
 temp2[is.na(temp2)] <- 0
-
 tempm <- reshape2::melt(temp)
 
 td <- c()

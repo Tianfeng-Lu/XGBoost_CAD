@@ -1,0 +1,173 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+# Tue Jun  7 19:35:18 2022 ------------------------------
+
+
+```{r}
+source("tianfengRwrappers.R")
+```
+
+## rat Frontier *GSE174098*
+```{r fig.width=4, fig.height=8}
+rat10x <- CreateSeuratObject(Read10X("./rat_scRNAseq/"), names.field = 2, names.delim = "-",
+                                   project = "rat", min.cells = 10, min.features = 300) %>%
+  PercentageFeatureSet(pattern = "^Mt-", col.name = "percent.mt") 
+
+table(rat10x$orig.ident)
+VlnPlot(rat10x,"nCount_RNA") /
+VlnPlot(rat10x,"percent.mt") /
+VlnPlot(rat10x, "nFeature_RNA")
+
+
+rat10x <- rat10x %>% subset(subset = nFeature_RNA > 400 & nFeature_RNA < 4000 &
+                              nCount_RNA > 1000 &  nCount_RNA < 30000 & percent.mt< 10) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+table(rat10x$orig.ident)
+```
+
+
+```{r fig.width=4, fig.height=3}
+umapplot(rat10x)
+
+f("Bmpr1b", rat10x) /
+f("Bmpr1a", rat10x)
+table(rat10x$seurat_clusters)
+
+rat10x0 <- subset(rat10x,ident = 0)
+
+f("Sost",rat10x)
+ncol(subset(rat10x0, subset = Bmpr1a > 0))
+ncol(subset(rat10x0, subset = Bmpr1b > 0))
+ncol(subset(rat10x0, subset = Bmpr1a > 0 & Bmpr1b > 0))
+
+ncol(subset(rat10x0, subset = Sost > 0 & Bmpr1b > 0))
+ncol(subset(rat10x0, subset = Sost > 0 & Bmpr1a > 0))
+
+ncol(rat10x0)
+```
+# mouse coronary *GSE131778*
+```{r}
+mouse_coronary_countmatrix <- read.csv("./GSE131776_mouse_scRNAseq.txt", sep = "\t")
+func <- function(s) {
+  paste0(strsplit(s, ".", fixed = T)[[1]][2], "_", strsplit(s, ".", fixed = T)[[1]][1])
+}
+colnames(mouse_coronary_countmatrix) <- lapply(colnames(mouse_coronary_countmatrix), func) # 拆分样本
+```
+
+```{r fig.width= 4, fig.height=8}
+mousecor <- CreateSeuratObject(counts = mouse_coronary_countmatrix,
+                                   project = "mouse_cor", min.cells = 10, min.features = 300) %>%  PercentageFeatureSet(pattern = "^mt-", col.name = "percent.mt") 
+
+# saveRDS(mousecor,"mousecor.rds")
+table(mousecor$orig.ident)
+VlnPlot(mousecor,"nCount_RNA") /
+VlnPlot(mousecor,"percent.mt") /
+VlnPlot(mousecor, "nFeature_RNA")
+
+
+mousecor <- mousecor %>% subset(subset = nFeature_RNA > 400 & nFeature_RNA < 4000 &
+                              nCount_RNA > 1000 &  nCount_RNA < 30000 & percent.mt < 10) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+table(mousecor$orig.ident)
+```
+
+## mouse carotid scRNAseq *GSE155513*
+```{r}
+
+```
+
+
+
+## human bulk RNA-seq *GSE120521* carotid stable/unstable FPKM
+```{r}
+fpkm2tpm <- function(fpkm){
+  exp(log(fpkm) - log(sum(fpkm)) + log(1e6))
+}
+
+fpkm_matrix <- read.csv("GSE120521_FPKM.csv")
+# fpkm_matrix <- distinct(fpkm_matrix) #去除重复行
+fpkm_matrix <- fpkm_matrix[!duplicated(fpkm_matrix$name),]
+rownames(fpkm_matrix) <- fpkm_matrix$name
+fpkm_matrix$name <- NULL
+
+tpm_matrix <- apply(fpkm_matrix, 2, fpkm2tpm)
+colSums(tpm_matrix)
+
+group_file <- c("stable","unstable","stable","unstable",
+                "stable","unstable","stable","unstable")
+boxplot(tpm_matrix, las = 2)
+
+expr_mat <- tpm_matrix[!apply(tpm_matrix, 1, function(x){sum(floor(x) == 0)>3}),]
+
+boxplot(expr_mat, las = 2)
+
+library(limma)
+expr_mat <- normalizeBetweenArrays(expr_mat)
+expr_mat <- log2(expr_mat+1) #使用log2 scale
+
+#PCA
+library(ggfortify) 
+df <- as.data.frame(t(expr_mat)) 
+df$group <- group_file 
+autoplot(prcomp(df[,1:(ncol(df)-1)]), data=df, colour = 'group')+ theme_bw() 
+
+# If the sequencing depth is reasonably consistent across the RNA samples, then the simplest and most robust approach to differential exis to use limma-trend.
+
+fit <- lmFit(expr_mat, group_file)
+fit <- treat(fit, lfc=log2(1.2), trend=TRUE)
+topTreat(fit, coef=ncol(design))
+
+```
+
+
+```{r}
+library(ggpubr)
+dat <- expr_mat
+design <- model.matrix(~factor(group_file))
+fit <- lmFit(dat, design)
+fit <- eBayes(fit)
+# options(digits = 4)
+topTable(fit,coef=2,adjust='BH')
+deg <- topTable(fit,coef=2,adjust='BH',number = Inf)
+head(deg) 
+
+write.csv(deg,"stable vs unstable.csv")
+## look up FRZB, SOST, PRDM6, OGN
+ds1markers[ds1markers$cluster == "SMC2",]$gene
+
+ds2markers[ds2markers$cluster == "SMC3",]$gene
+
+smc2markers <- intersect(ds1markers[ds1markers$cluster == "SMC2",]$gene, ds2markers[ds2markers$cluster == "SMC3",]$gene)
+
+
+deg[intersect(smc2markers, rownames(deg)),]
+
+
+
+
+ds1markers[ds1markers$cluster == "SMC1",]$gene
+
+ds2markers[ds2markers$cluster == "SMC1",]$gene
+
+SMC1markers <- intersect(ds1markers[ds1markers$cluster == "SMC1",]$gene, ds2markers[ds2markers$cluster == "SMC1",]$gene)
+
+deg[intersect(SMC1markers, rownames(deg)),]
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
