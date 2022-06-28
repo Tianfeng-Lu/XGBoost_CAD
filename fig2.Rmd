@@ -106,10 +106,13 @@ source("XGBoost_wrapper.R")
 
 bst_model <- XGBoost_train_from_seuobj(ds2_AC)
 ds2_PA <- XGBoost_predict_from_seuobj(ds2_PA,bst_model)
-umapplot(ds2_PA,group.by = "projected_idents")
-ds2_PA <- project2ref_celltype2(ds2_PA,ds2_AC)
-umapplot(ds2_PA,group.by = "ref_celltype", repel = T, label.size = 5)
 
+confuse_mat <- XGBoost_predict_from_seuobj(ds2_PA, bst_model, return_confuse_matrix = T)
+sankey_plot(confuse_mat,session = "AC -> PA")
+
+umapplot(ds2_PA,group.by = "projected_idents")
+ds2_PA <- project2ref_celltype2(ds2_PA, ds2_AC)
+umapplot(ds2_PA,group.by = "ref_celltype", repel = T, label.size = 5)
 ```
 ### numerical umap
 ```{r}
@@ -150,6 +153,9 @@ ds2_AC <- XGBoost_predict_from_seuobj(ds2_AC,bst_model)
 umapplot(ds2_AC,group.by = "projected_idents")
 ds2_AC <- project2ref_celltype2(ds2_AC,ds2_PA)
 umapplot(ds2_AC,group.by = "ref_celltype", repel = T, label.size = 5)
+
+confuse_mat <- XGBoost_predict_from_seuobj(ds2_AC, bst_model, return_confuse_matrix = T)
+sankey_plot(confuse_mat,session = "PA -> AC")
 ```
 ### numerical umap
 ```{r}
