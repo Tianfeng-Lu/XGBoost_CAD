@@ -16,92 +16,180 @@ Idents(ds2) <- ds2$seurat_clusters
 ggobj <- multi_featureplot(selected_features[1:9], ds2, labels = NULL)
 ggsave("ds2_features.png", device = png, height = 8, width = 8, plot = ggobj)
 ```
-## 病变亚群的识别
+
+# umap plot
+```{r}
+ggsave("./fig2/ds2_ACumap.png", device = png, height = 4, width = 6, 
+       plot = umapplot(ds2_AC, group.by = "Classification1", label.size = 5))
+ggsave("./fig2/ds2_PAumap.png", device = png, height = 4, width = 6, 
+       plot = umapplot(ds2_PA, group.by = "Classification1", label.size = 5))
+```
+umapplot(ds2_AC,)
+umapplot(ds2_PA, group.by = "Classification1")
+
+# Where is the Fibromyocyte
 ### LUM
 ```{r}
 sep = 0.3
 surfaceplot2("LUM",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
 ```
 
-```{r}
-surfaceplot2("ACTA2",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
-```
-### LUM
-```{r}
-sep = 0.3
-surfaceplot2("BGN",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep))
-```
-
-
-```{r}
-surfaceplot2("FB_score1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep),z_height = 2)
-```
-
-```{r}
-surfaceplot2("SMC_score1",ds2,x_seq = seq(-2,13, sep), y_seq = seq(2,17,sep),z_height = 2)
-```
-
-
-```{r}
-dd <- umapplot(ds2,label = F)+scale_y_continuous(limits = c(2,17), breaks = NULL) +
-        scale_x_continuous(limits = c(-2,13), breaks = NULL)+ 
-  guides(colour = guide_legend(override.aes = list(size = 5))) +
-        theme(axis.line = element_blank())
-ggsave("dd.png",device = png,height = 4,width = 6,plot= dd, bg = "transparent")
-
-```
-
-#  addmodulescore
+##  addmodulescore
 ```{r fig.height=3, fig.width=3}
 geneset <- read.table("SMC")
-ds2 <- AddModuleScore(ds2,features = geneset, name = 'SMC_score')
+
 ds2_AC <- AddModuleScore(ds2_AC,features = geneset, name = 'SMC_score')
 ds2_PA <- AddModuleScore(ds2_PA,features = geneset, name = 'SMC_score')
-f("SMC_score1",label = F, ds2_AC) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
-f("SMC_score1",label = F, ds2_PA) + scale_colour_gradient(low="#1E90FF", high="#ff2121")
+
+(f("SMC_score1",label = F, ds2_AC) + scale_colour_gradient(low="#1E90FF", high="#ff2121")) %>%
+  ggsave("./fig2/ds2_AC_SMCscore.png", device = png, height = 4, width = 5, plot = .)
+(f("SMC_score1",label = F, ds2_PA) + scale_colour_gradient(low="#1E90FF", high="#ff2121")) %>%
+  ggsave("./fig2/ds2_PA_SMCscore.png", device = png, height = 4, width = 5, plot = .)
+
+
 # dataset1 <- AddModuleScore_UCell(dataset1,features = geneset, name = 'fibromyo_score')
-# f("V1fibromyo_score", dataset1)
+
 
 geneset <- read.table("FB")
-ds2 <- AddModuleScore(ds2,features = geneset, name = 'FB_score')
+
 ds2_AC <- AddModuleScore(ds2_AC,features = geneset, name = 'FB_score')
 ds2_PA <- AddModuleScore(ds2_PA,features = geneset, name = 'FB_score')
-f("FB_score1", label = F, ds2_AC) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
-f("FB_score1", label = F, ds2_PA) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
+
+(f("FB_score1", label = F, ds2_AC) +scale_colour_gradient(low="#1E90FF", high="#ff2121")) %>%
+  ggsave("./fig2/ds2_AC_FBscore.png", device = png, height = 4, width = 5, plot = .)
+(f("FB_score1", label = F, ds2_PA) +scale_colour_gradient(low="#1E90FF", high="#ff2121")) %>%
+  ggsave("./fig2/ds2_PA_FBscore.png", device = png, height = 4, width = 5, plot = .)
 ```
 
+# key features have gradient expression
+## BGN LUM
+```{r}
+ridgetheme <- theme(plot.title = element_text(size = 15,color="black",hjust = 0.5),
+                 axis.title = element_text(size = 15,color ="black"), 
+                 axis.text = element_text(size = 15,color = "black"),
+                 panel.grid.minor.y = element_blank(),
+                 panel.grid.minor.x = element_blank(),
+                 axis.text.x = element_text(angle = 0, hjust = 1),
+                 panel.grid=element_blank(),
+                 legend.position = "top",
+                 legend.text = element_text(size= 15),
+                 legend.title= element_text(size= 15)) 
+```
+
+## ridge plot
 ```{r}
 df <- FetchData(ds2_AC,vars = c("FB_score1","SMC_score1","BGN","LUM","UMAP_1","UMAP_2"))
 # df <- arrange(df,FB_score1,by_group = F)
 data <- cbind(df,index = 1:nrow(df),cluster = Idents(ds2_AC))
 
-ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+(ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + ridgetheme + scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list) + theme(legend.key.size = unit(1,"cm")) + guides(colour = guide_legend(override.aes = list(size=10)))) 
 
-ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
-
+(ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + ridgetheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list) + guides(colour = guide_legend(override.aes = list(size=10))))
 
 
 df <- FetchData(ds2_PA,vars = c("FB_score1","SMC_score1","BGN","LUM","UMAP_1","UMAP_2"))
 # df <- arrange(df,FB_score1,by_group = F)
 data <- cbind(df,index = 1:nrow(df),cluster = Idents(ds2_PA))
 
-ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+ggplot(data,aes(x=SMC_score1)) + geom_point(aes(y = BGN, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + theme_classic() + ridgetheme + scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list) + guides(colour = guide_legend(override.aes = list(size=10)))
 
-ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list)
+ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = LUM, color = cluster),alpha = 1) + geom_smooth(aes(y = BGN), color = "green") + theme_classic() + ridgetheme +scale_y_continuous(limits = c(1,5)) + scale_color_manual(values = colors_list) + guides(colour = guide_legend(override.aes = list(size=10)))
 
-
-
-
-ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = BGN),color = "#e2b398",alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + geom_point(aes(y=LUM),color = "#d1eba8",alpha = 1) + geom_smooth(aes(y = LUM), color = "green") + theme_classic() + mytheme +scale_y_continuous(limits = c(1,5))
+# ggplot(data,aes(x=FB_score1)) + geom_point(aes(y = BGN),color = "#e2b398",alpha = 1) + geom_smooth(aes(y = BGN), color = "red") + geom_point(aes(y=LUM),color = "#d1eba8",alpha = 1) + geom_smooth(aes(y = LUM), color = "green") + theme_classic() + ridgetheme +scale_y_continuous(limits = c(1,5))
 
 ```
+
+# fig.D
+## AC->PA
+```{r}
+source("XGBoost_wrapper.R")
+
+bst_model <- XGBoost_train_from_seuobj(ds2_AC)
+ds2_PA <- XGBoost_predict_from_seuobj(ds2_PA,bst_model)
+umapplot(ds2_PA,group.by = "projected_idents")
+ds2_PA <- project2ref_celltype2(ds2_PA,ds2_AC)
+umapplot(ds2_PA,group.by = "ref_celltype", repel = T, label.size = 5)
+
+```
+### numerical umap
+```{r}
+embedding <- FetchData(object = ds2_PA, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, cbind(ds2_PA$X0,ds2_PA$X1,ds2_PA$X2,ds2_PA$X3))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`), shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("./fig2/sup_ds2PA_umap.png",device = png, plot = ggobj, height = 10,width = 10)
+```
+
+
+
+## PA->AC
+### train on PA
+```{r}
+bst_model <- XGBoost_train_from_seuobj(ds2_PA)
+ds2_AC <- XGBoost_predict_from_seuobj(ds2_AC,bst_model)
+umapplot(ds2_AC,group.by = "projected_idents")
+ds2_AC <- project2ref_celltype2(ds2_AC,ds2_PA)
+umapplot(ds2_AC,group.by = "ref_celltype", repel = T, label.size = 5)
+```
+### numerical umap
+```{r}
+embedding <- FetchData(object = ds2_AC, vars = c("UMAP_1", "UMAP_2"))
+embedding <- cbind(embedding, cbind(ds2_AC$X0,ds2_AC$X1,ds2_AC$X2,ds2_AC$X3))
+
+ggobj <- ggplot() +
+  geom_point(data = embedding[embedding$`1`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `1`), shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('0', low = "#FFFFFF00", high = "#6dc0a6") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`2`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `2`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('1', low = "#FFFFFF00", high = "#e2b398") +
+   new_scale("color") +
+    geom_point(data = embedding[embedding$`3`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `3`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('2', low = "#FFFFFF00", high = "#e2a2ca") +
+  new_scale("color") +
+    geom_point(data = embedding[embedding$`4`>0.1,], 
+             aes(x = UMAP_1, y = UMAP_2, color = `4`),shape=16, size = 3, alpha=0.5) + 
+  scale_color_gradient('3', low = "#FFFFFF00", high = "#d1eba8") +
+        xlab("UMAP 1") + ylab("UMAP 2")  +
+        theme(axis.line = element_line(arrow = arrow(length = unit(0.2, "cm")))) +
+        scale_y_continuous(breaks = NULL) +
+        scale_x_continuous(breaks = NULL) + 
+  theme(panel.background = element_blank(), panel.grid = element_blank(), legend.position = "bottom")
+ggsave("./fig2/sup_ds2AC_umap.png",device = png, plot = ggobj,height = 10,width = 10)
+```
+
 
 # GSVA
 ```{r}
 GSVAres <- readRDS("GSVAres.rds")
 es <- data.frame(t(GSVAres),stringsAsFactors=F)  #可视化相关通路的在umap上聚集情况
-ds2 <- AddMetaData(ds2, es)
-f("CUI_TCF21_TARGETS_UP", label = F, ds2) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
+ds2_AC <- AddMetaData(ds2_AC, es)
+f("CUI_TCF21_TARGETS_UP", label = F, ds2_AC) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
+
+ds2_PA <- AddMetaData(ds2_PA, es)
+f("CUI_TCF21_TARGETS_UP", label = F, ds2_PA) +scale_colour_gradient(low="#1E90FF", high="#ff2121")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

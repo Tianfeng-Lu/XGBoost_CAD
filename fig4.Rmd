@@ -86,7 +86,3 @@ ggsave("BMPsignaling.png",plot = ggobj, height = 8, width = 8, device = png)
 ```
 
 
-
-
-
-

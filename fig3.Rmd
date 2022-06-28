@@ -10,9 +10,6 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 ```{r}
 source("tianfengRwrappers.R")
 ```
-```{r}
-ds2 <- readRDS("ds2.rds")
-```
 
 # umapplot
 ```{r}
@@ -33,56 +30,42 @@ ds0 <- readRDS("ds0.rds")
 
 # 周细胞的存在
 ```{r fig.width=6,fig.height=6}
-
-ggsave("./fig3/ds0.svg",plot = umapplot(ds0),device = svg, width = 7, height = 5)
-
+# ggsave("./fig3/ds0.svg",plot = umapplot(ds0),device = svg, width = 7, height = 5)
 ## pericyte
 multi_featureplot(c("FABP4", "RERGL", "NRIP2","HIGD1B"),ds2,labels = "")
 ```
 
-```{r}
-library(igraph)
-```
-
-```{r}
-ds1_expr <- get_averexpr_mat_cluster(ds1)
-cluster_info <- data.frame(colnames(ds1_expr),"1",check.names = F)
-
-ds2_expr <- get_averexpr_mat_cluster(ds2)
-cluster_info2 <- data.frame(colnames(ds2_expr),"2",check.names = F)
-
-selected_genes <- intersect(ds2@assays[["SCT"]]@var.features,ds1@assays[["SCT"]]@var.features)
-ds2_expr <- ds2_expr[selected_genes,]
-ds1_expr <- ds1_expr[selected_genes,]
-expr <- cbind(ds1_expr,ds2_expr)
-corr_mat <- cor(expr)
-
-col_fun <-  colorRamp2(c(0.7, 0.85, 1), c("#1E90FF", "white", "#ff2121"))
-Heatmap(corr_mat, cluster_rows = T, cluster_columns = T, 
-        show_column_names = T, show_row_names = T,
- column_title = NULL,
- heatmap_legend_param = list(
- title='Cor', title_position='leftcenter-rot'), col = col_fun)
-```
-
-## 基因表达
+# 基因表达 小提琴图
 ds2 -> ds1
 无监督聚类
+
 ```{r}
-ds1 <- readRDS("ds1.rds")
-ds2FbM <- subset(ds2,ident = "Fibromyocyte")
-ds1FbM <- subset(ds1,ident = "Fibromyocyte")
+viotheme <- theme(plot.title = element_text(size = 17,color="black",hjust = 0.5),
+                 axis.title = element_text(size = 17,color ="black"), 
+                 axis.text = element_text(size = 17,color = "black"),
+                 panel.grid.minor.y = element_blank(),
+                 panel.grid.minor.x = element_blank(),
+                 axis.text.x = element_text(size= 17, angle = 0),
+                 panel.grid=element_blank(),
+                 legend.position = "top",
+                 legend.text = element_text(size= 17),
+                 legend.title= element_text(size= 17))
+
+stat_theme <- stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test", size = 6,
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
+```
+
+```{r}
+genes_to_show <-  c("DCN","LUM","FBLN1","MYH11")
+
+ds2FbM <- subset(ds2,Classification1 == "Fibromyocyte")
+ds1FbM <- subset(ds1,Classification1 == "Fibromyocyte")
 
 ds2data <- get_data_table(ds2FbM,type = "data")
 ds1data <- get_data_table(ds1FbM,type = "data")
-
-# ds2expr <- data.frame(expr = ds2data["DCN",], sample = "ds2", gene = "DCN")
-# rownames(ds2expr) <- NULL
-# ds1expr <- data.frame(expr = ds1data["DCN",], sample = "ds1")
-# rownames(ds1expr) <- NULL
-# merge_expr <- rbind(ds2expr,ds1expr)
-
-genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
 
 func1 <- function(gene, sample, datable){
   data.frame(expr = datable[gene,], sample = sample, gene = gene)
@@ -99,13 +82,10 @@ for (i in lapply(genes_to_show, func1,"ds2",ds2data))
   merge_expr <- rbind(merge_expr,i)
 }
 
-
 rownames(merge_expr) <- NULL
 
-
-
 Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-head(Data_summary)
+# head(Data_summary)
 
 ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
   geom_split_violin(trim= F, color="white", scale = "area") + 
@@ -117,39 +97,26 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 color="black",
                 alpha = 0.7,
                 size= 0.5) +
-  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
-ggsave("unds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999")) +
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+ggsave("./fig3/unds2tods1.png", device = png, plot = ggobj, height = 5, width = 7)
 
 ```
-# 监督聚类结果
-## 这里使用numeric的分群
+## 监督聚类结果 ds2 ds1
 ```{r}
-ds2FbM <- subset(ds2,ident = "1")
-ds1FbM <- subset(ds1,ident = "1")
+ds2FbM <- subset(ds2,Classification1 == "Fibromyocyte")
+ds1FbM <- subset(ds1,ref_celltype == "Fibromyocyte")
 
 ds2data <- get_data_table(ds2FbM,type = "data")
 ds1data <- get_data_table(ds1FbM,type = "data")
 
-# ds2expr <- data.frame(expr = ds2data["DCN",], sample = "ds2", gene = "DCN")
-# rownames(ds2expr) <- NULL
-# ds1expr <- data.frame(expr = ds1data["DCN",], sample = "ds1")
-# rownames(ds1expr) <- NULL
-# merge_expr <- rbind(ds2expr,ds1expr)
-
-genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
 
 func1 <- function(gene, sample, datable){
   data.frame(expr = datable[gene,], sample = sample, gene = gene)
 }
-
 merge_expr <- data.frame()
-
 for (i in lapply(genes_to_show, func1,"ds1",ds1data))
 {
   merge_expr <- rbind(merge_expr,i)
@@ -158,12 +125,9 @@ for (i in lapply(genes_to_show, func1,"ds2",ds2data))
 {
   merge_expr <- rbind(merge_expr,i)
 }
-
-
 rownames(merge_expr) <- NULL
-
 Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-head(Data_summary)
+# head(Data_summary)
 
 ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
   geom_split_violin(trim= F, color="white", scale = "area") + 
@@ -176,26 +140,20 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
-
-ggsave("supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
+  labs(y=("gene expression"),x=NULL, title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+ggsave("./fig3/supds2tods1.png", device = png, plot = ggobj, height = 5, width = 7)
 ```
 
 # ds2 -> ds0
 ## 无监督聚类
 ```{r}
-ds2FbM <- subset(ds2,ident = "1")
-ds0FbM <- subset(ds0,ident = "Fibromyocyte")
+ds2FbM <- subset(ds2,Classification1 == "Fibromyocyte")
+ds0FbM <- subset(ds0,Classification1 == "Fibromyocyte")
 
 ds2data <- get_data_table(ds2FbM,type = "data")
 ds0data <- get_data_table(ds0FbM,type = "data")
-
-genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
 
 
 merge_expr <- data.frame()
@@ -212,7 +170,7 @@ for (i in lapply(genes_to_show, func1,"ds2",ds2data))
 rownames(merge_expr) <- NULL
 
 Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-head(Data_summary)
+# head(Data_summary)
 
 ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
   geom_split_violin(trim= F, color="white", scale = "area") + 
@@ -225,27 +183,21 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
-
-ggsave("unds2tods0.svg", device = svg, plot = ggobj, height = 6, width = 10)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+ggsave("./fig3/unds2tods0.png", device = png, plot = ggobj, height = 5, width = 7)
 ```
 
 ## 监督聚类
-
 ```{r}
-Idents(ds0) <- ds0$supclustering
-ds2FbM <- subset(ds2,ident = "1")
-ds0FbM <- subset(ds0,ident = "1")
+# Idents(ds0) <- ds0$ref_celltype
+# umapplot(ds0,group.by = "ref_celltype")
+ds2FbM <- subset(ds2, Classification1 == "Fibromyocyte")
+ds0FbM <- subset(ds0, ref_celltype == "Fibromyocyte")
 
 ds2data <- get_data_table(ds2FbM,type = "data")
 ds0data <- get_data_table(ds0FbM,type = "data")
-
-genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
 
 merge_expr <- data.frame()
 
@@ -274,16 +226,14 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
-
-ggsave("supds2tods0.svg", device = svg, plot = ggobj, height = 6, width = 10)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+ggsave("./fig3/supds2tods0.png", device = png, plot = ggobj, height = 5, width = 7)
 ```
 
+
+------
 # ds0 -> ds2
 ##无监督聚类
 ```{r}
@@ -295,11 +245,6 @@ ds0FbM <- subset(ds0,ident = "Fibromyocyte")
 ds2data <- get_data_table(ds2FbM,type = "data")
 ds0data <- get_data_table(ds0FbM,type = "data")
 
-# genes_to_show <- c("IGFBP2","MGP","MYH11","DCN","TNFRSF11B")
-genes_to_show <- c("DCN","LUM","MMP2","ACTA2","TNFRSF11B","FBLN1")
-
-
-
 merge_expr <- data.frame()
 
 for (i in lapply(genes_to_show, func1,"ds0",ds0data))
@@ -327,12 +272,8 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
 
 ggsave("2_unds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ```
@@ -377,12 +318,8 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
 ggobj
 ggsave("supds0tods2.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ```
@@ -434,12 +371,8 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
 ggobj
 ggsave("2_unds0tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ```
@@ -484,12 +417,8 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 alpha = 0.7,
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
+  labs(y=("gene expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
 ggobj
 ggsave("2_supds0tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ```
@@ -497,7 +426,7 @@ ggsave("2_supds0tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 
 
 ```{r}
-mytheme <- theme(plot.title = element_text(size = 12,color="black",hjust = 0.5),
+viotheme <- theme(plot.title = element_text(size = 12,color="black",hjust = 0.5),
                      axis.title = element_text(size = 12,color ="black"), 
                      axis.text = element_text(size= 12,color = "black"),
                      panel.grid.minor.y = element_blank(),
@@ -671,39 +600,30 @@ data3$group <- "ref"
 
 data <- rbind(data1,data2,data3)
 
-ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
-  geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
+scatter_theme <- theme(axis.title = element_text(size = 20,color = "black"),
         axis.text = element_text(size = 20,color = "black"),
         axis.line = element_line(size = 1),
         axis.ticks = element_line(size = 1),
+        legend.key.size = unit(2,"cm"),
         title = element_text(size = 20))
+
+ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) +
+  theme_classic() + scatter_theme
 
 ggplot(data, aes(x=LUM, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
   geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
+  theme_classic() + scatter_theme
 
 ggplot(data, aes(x=TAGLN, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
   geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
+  theme_classic() + scatter_theme
 
 ```
 
-## 多种方法的比较
-```{r}
-
-```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

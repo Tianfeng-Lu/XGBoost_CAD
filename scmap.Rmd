@@ -695,7 +695,7 @@ ggsave("./scmap/scmapVSxgboost.svg", device = svg, width = 6, height = 8, plot =
 
 
 
-##SMC2的鉴别
+# SMC2的鉴别
 
 ### ds1 project to ds2
 ## 构造ref
@@ -799,11 +799,7 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
   labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ mytheme + stat_compare_means(aes(group = sample),
-                     label = "p.format",
-                     method = "wilcox.test",
-                     label.y = max(merge_expr$expr),
-                      hide.ns = F)
+  theme_classic()+ viotheme + stat_theme
 ggobj
 # ggsave("./scmap/scmapsupds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 # ggsave("./SMC2supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)

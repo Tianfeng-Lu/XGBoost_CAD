@@ -108,28 +108,42 @@ saveRDS(CA_dataset2,"CA_dataset2.rds") #已经经过分组处理了
 
 ```{r}
 Idents(CA_dataset2) <- CA_dataset2$conditions
-AC <- subset(CA_dataset2, idents = "AC")
-PA <- subset(CA_dataset2, idents = "PA")
+temp <- subset(CA_dataset2, Classification1 == "SMC" | Classification1 == "Fibroblast")
+ds2_AC <- subset(temp, idents = "AC")
+ds2_PA <- subset(temp, idents = "PA")
+rm(temp)
 ```
 
 ```{r}
-AC <- AC %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+ds2_AC <- ds2_AC %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
   RunUMAP(dims = 1:20) %>% 
   FindClusters(resolution = 0.1)
-PA <- PA %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
-  RunUMAP(dims = 1:20,seed.use = 20) %>% 
+ds2_PA <- ds2_PA %>% RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+  RunUMAP(dims = 1:20, seed.use = 20) %>% 
   FindClusters(resolution = 0.1)
 ```
 
 ```{r}
-AC <- AC %>% RunUMAP(dims = 1:20,seed.use = 20) %>% 
-  FindClusters(resolution = 0.1)
-```
-```{r}
-SMC <- subset(AC,idents = c(1,4))
+umapplot(ds2_AC)
+umapplot(ds2_PA)
+
+f("TAGLN",ds2_PA)
+levels(Idents(ds2_AC)) <-  c("Fibroblast","Fibromyocyte","Pericyte","SMC2") 
+levels(Idents(ds2_PA)) <-  c("SMC1","Fibromyocyte","SMC2","Pericyte") 
+
+ds2_AC$Classification1 <- factor(Idents(ds2_AC),levels = c("Fibroblast","Fibromyocyte","Pericyte","SMC1","SMC2"))
+ds2_PA$Classification1 <- factor(Idents(ds2_PA),levels = c("Fibroblast","Fibromyocyte","Pericyte","SMC1","SMC2"))
+
+Idents(ds2_AC) <- ds2_AC$Classification1
+Idents(ds2_PA) <- ds2_PA$Classification1
+
+umapplot(ds2_AC, group.by = "Classification1")
+umapplot(ds2_PA, group.by = "Classification1")
 ```
 
 ```{r}
-SMC <- SMC %>% FindNeighbors(dims = 1:20) %>% FindClusters(resolution = 0.2)
+saveRDS(ds2_AC,"ds2_AC.rds")
+saveRDS(ds2_PA,"ds2_PA.rds")
 ```
+
 

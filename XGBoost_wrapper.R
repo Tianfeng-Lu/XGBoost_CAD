@@ -11,7 +11,8 @@ XGBoost_train_from_seuobj <- function(seuobj, is_highvar = T, test_ratio = 0.3, 
   seuobj_label <- as.numeric(as.character(Idents(seuobj)))
   if(is.na(seuobj_label[1])) # check vaild Idents
   {
-    stop("Please ensure that seurat idents are in numeric forms")
+    warning("Please ensure that seurat idents are in numeric forms")
+    seuobj_label <- as.numeric(Idents(seuobj))-1 # transform character idents to numeric
   }
   # colnames(seuobj_data) <- NULL
   seuobj_data <- get_data_table(seuobj, highvar = T, type = "data")
@@ -54,7 +55,7 @@ XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed 
   seuobj_label <- as.numeric(as.character(Idents(seuobj)))
   if(!is.null(which(is.na(seuobj_label)))) # check vaild Idents
   {
-    warning("Please ensure that seurat idents are in numeric forms") #这里似乎不跳出也可以
+    warning("Please ensure that seurat idents are in numeric forms")
     seuobj_label <- as.numeric(as.character(seuobj$seurat_clusters))
   }
   temp <- get_data_table(seuobj, highvar = T, type = "data")
@@ -119,8 +120,9 @@ project2ref_celltype <- function(query_seuobj, ref_seuobj,
                                  query_labels = "projected_idents",
                                  ref_labels = c("seurat_clusters","Classification1")) 
   # transfer lables: add ref_celltype to meta.data in query seurat object
+  # ref_labels assign the mapping between numeric idents and celltype idents
 {
-  identmap <- levels(ref_seuobj@meta.data[[ref_labels[1]]]) 
+  identmap <- 0:(length(levels(ref_seuobj@meta.data[[ref_labels[1]]]))-1)
   ## build mapping between numeric labels and ref labels
   names(identmap) <- levels(ref_seuobj@meta.data[[ref_labels[2]]]) 
   
@@ -131,6 +133,23 @@ project2ref_celltype <- function(query_seuobj, ref_seuobj,
   return(query_seuobj)
 }
 
+## congenial to current ident to train bst_model
+project2ref_celltype2 <- function(query_seuobj, ref_seuobj, 
+                                 query_label = "projected_idents") 
+{
+  df <- Idents(query_seuobj) 
+  Idents(query_seuobj) <- query_seuobj@meta.data[[query_label]]
+  t1 <- levels(Idents(query_seuobj))
+  t2 <- levels(Idents(ref_seuobj))
+  if(length(t1) == length(t2)){ # ID convention
+  levels(Idents(query_seuobj)) <- c(levels(Idents(ref_seuobj)))
+  }else{
+    levels(Idents(query_seuobj)) <- c(levels(Idents(ref_seuobj)),"Unassigned")
+  }
+  query_seuobj$ref_celltype <- Idents(query_seuobj)
+  Idents(query_seuobj) <- df
+  return(query_seuobj)
+}
 
 library(SingleCellExperiment)
 library(scmap)
