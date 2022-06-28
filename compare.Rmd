@@ -12,49 +12,25 @@ source("tianfengRwrappers.R")
 source("XGBoost_wrapper.R")
 ```
 
-## harmony
+## highlight cells in reference dataset to assign cell types in an aligned 
 ```{r}
-library(harmony)
-Idents(ds0) <- "ds0"
-Idents(ds1) <- "ds1"
-Idents(ds2) <- "ds2"
-CAD_merge <- merge(ds0,c(ds1,ds2))
-CAD_merge$orig.ident <- Idents(CAD_merge) #存储原始分区
+CAD_merge_harmony <- readRDS("CAD_merge_harmony.rds")
+CAD_merge_CCA <- readRDS("CAD_merge_CCA.rds")
 
-CAD_merge <- CAD_merge %>% 
-  PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
-  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
-  RunPCA()
-
-# saveRDS(CAD_merge, "CAD_merge.rds")
-
-CAD_merge_harmony <- RunHarmony(CAD_merge, "orig.ident", plot_convergence = T, 
-                                project.dim = T, assay.use = "SCT")
-CAD_merge_harmony@reductions[["pca"]] <- CAD_merge_harmony@reductions[["harmony"]]
-
-CAD_merge_harmony <- CAD_merge_harmony %>% FindNeighbors(dims = 1:20) %>%
-  RunUMAP(dims = 1:20) %>% 
-  FindClusters(resolution = 0.1)
-
-PCAPlot(CAD_merge_harmony, split.by = "orig.ident")
-DimPlot(CAD_merge_harmony, reduction = "harmony", split.by = "orig.ident")
-
-CAD_merge_harmony <- FindClusters(CAD_merge_harmony, resolution = 0.2)
-umapplot(CAD_merge_harmony, split.by = "orig.ident")
-# saveRDS(CAD_merge_harmony,"CAD_merge_harmony.rds")
-
-
-```
-
-## 亚群标记
-```{r}
 Idents(ds2) <- ds2$Classification1
 UMAPPlot(CAD_merge_harmony, label = T, cells.highlight = WhichCells(ds2, idents = "Fibroblast"))
+
 ## 5 -- SMC2  0,2 -- SMC1  4,6 -- FBM  3,8 --FB  1 --pericyte  7 -- mixed cells
 levels(Idents(CAD_merge_harmony)) <- c("SMC1","Pericyte","SMC1","Fibroblast",
                                "Fibromyocyte","SMC2","Fibromyocyte","Mixed cells","Fibroblast")
 CAD_merge_harmony$ds2_celltype <- Idents(CAD_merge_harmony)
-f("LUM",CAD_merge_harmony,reduction = "umap")
+
+UMAPPlot(CAD_merge_CCA, label = T, cells.highlight = WhichCells(ds2, idents = "Fibromyocyte"))
+umapplot(CAD_merge_CCA)
+levels(Idents(CAD_merge_CCA)) <- c("SMC1","Fibromyocyte","Fibroblast","Pericyte",
+                               "Pericyte","SMC2","SMC1","Pericyte","Fibromyocyte","Fibroblast")
+
+CAD_merge_CCA$ds2_celltype <- Idents(CAD_merge_CCA)
 ```
 
 
@@ -80,7 +56,10 @@ umapplot(ds0, group.by = "ref_celltype")
 
 umapplot(ds1, group.by = "scmap_idents")
 umapplot(ds0, group.by = "scmap_idents")
+```
 
+## cell type assignment
+```{r}
 
 ds1_scmap <- ds1$scmap_idents
 ds1_xgb <- ds1$ref_celltype
@@ -91,30 +70,167 @@ ds2_ref <- ds2$Classification1
 ds1_harmony <- subset(CAD_merge_harmony, orig.ident == "ds1")$ds2_celltype
 ds0_harmony <- subset(CAD_merge_harmony, orig.ident == "ds0")$ds2_celltype
 
+ds1_CCA <- subset(CAD_merge_CCA, orig.ident == "ds1")$ds2_celltype
+ds0_CCA <- subset(CAD_merge_CCA, orig.ident == "ds0")$ds2_celltype
+
+ds1_unaligned <- ds1$Classification1
+Idents(ds0) <- ds0$Classification1
+ds0 <- RenameIdents(ds0, 'SMC' = 'SMC1')
+ds0_unaligned <- Idents(ds0)
+```
+
+
+```{r fig.width=6, fig.height=4}
+selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(union(read.table("SMC")$V1,read.table("FB")$V1))
+# selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(read.table("SMC2")$V1)
 df <- data.frame(row.names = selected_features)
-for(cell_type in c("SMC1","Fibromyocyte","SMC2","Pericyte")){
+for(cell_type in c("SMC2")){
   df[paste0("ds2ref_",cell_type)] <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type]))) %>% colMeans()
-  
-  df[paste0("ds1scmap",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_scmap[ds1_scmap == cell_type]))) %>% colMeans() 
-  
-  df[paste0("ds0scmap",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_scmap[ds0_scmap == cell_type]))) %>% colMeans()
   
   df[paste0("ds1xgb_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type]))) %>% colMeans()
   
   df[paste0("ds0xgb_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_xgb[ds0_xgb == cell_type]))) %>% colMeans()
   
-    df[paste0("ds1harmony_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type]))) %>% colMeans()
+  df[paste0("ds1harmony_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type]))) %>% colMeans()
   
   df[paste0("ds0harmony_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_harmony[ds0_harmony == cell_type]))) %>% colMeans()
+  
+  df[paste0("ds1CCA_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type]))) %>% colMeans()
+  
+  df[paste0("ds0CCA_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type]))) %>% colMeans()
+  
+  df[paste0("ds1unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type]))) %>% colMeans()
+  
+  df[paste0("ds0unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type]))) %>% colMeans()
 }
+df <- t(na.omit(t(df)))
+corr <- cor(df,method = "spearman")
+rownames(corr) <- as.character(lapply(rownames(corr),tfunc))
+colnames(corr) <- as.character(lapply(colnames(corr),tfunc))
+corr[is.na(corr)] <- 0 #聚类时不能有NA
+pheatmap::pheatmap(corr,breaks = unique(c(seq(0.5, 1, length = 100))),
+        color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
+        border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 17,
+        main = "SMC2", angle_col = 45, show_rownames = T) 
+
+dd <- corr["ds2ref_Fibromyocyte",] %>% reshape2::melt()
+dd$x <- rownames(dd)
+tfunc <- function(x){
+  s <- strsplit(x,"_")[[1]][1]
+}
+dd$x <- as.character(lapply(dd$x,tfunc))
+dd <- dd[order(dd$value,decreasing = T),]
+dd$x <- factor(dd$x, levels = dd$x)
+ggplot(dd) + geom_bar(aes(x,weight = value, fill = x)) + bartheme + scale_y_continuous(breaks = seq(0.7, 1, 0.1)) + scale_fill_manual(values = colors_list) + coord_cartesian(ylim= c(0.7,1))
+
+
+bartheme <- theme(plot.title = element_text(size = 18, color="black",hjust = 0.5),
+                 axis.title = element_text(size = 18,color ="black"),
+                 axis.text = element_text(size = 18,color = "black"),
+                 panel.background = element_rect(fill = "white"),
+                 panel.grid.minor.y = element_blank(),
+                 panel.grid.minor.x = element_blank(),
+                 axis.text.x = element_text(angle = 45, hjust = 1 ),
+                 panel.grid=element_blank(),
+                 legend.position = "top",
+                 legend.text = element_text(size = 18),
+                 legend.title= element_text(size = 18))
+```
+# unsup PCA
+```{r}
+  df[paste0("ds1CCA_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type]))) 
+  
+  df[paste0("ds0CCA_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type]))) 
+  
+  df[paste0("ds1unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type]))) %>% colMeans()
+  
+  df[paste0("ds0unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type]))) %>% colMeans()
+  
+  rm(temp_result)
+for(cell_type in c("Fibromyocyte")){
+  
+  df1 <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type])),
+                    method = "ds2ref", celltype = cell_type, label = paste0(cell_type, "_ds2ref"))
+  
+  df2 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type])),
+                    method = "ds1xgb", celltype = cell_type, label = paste0(cell_type, "_ds1xgb"))  
+  
+  df3 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_xgb[ds0_xgb == cell_type])),
+                    method = "ds0xgb", celltype = cell_type, label = paste0(cell_type, "_ds0xgb"))
+  
+  df4 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type])),
+                    method = "ds1harmony", celltype = cell_type, label = paste0(cell_type, "_ds1harmony"))
+  
+  df5 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_harmony[ds0_harmony == cell_type])),
+                    method = "ds0harmony", celltype = cell_type, label = paste0(cell_type, "_ds0harmony")) 
+  
+  df6 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type])),
+                    method = "ds1CCA", celltype = cell_type, label = paste0(cell_type, "_ds1CCA"))
+  df7 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type])),
+                    method = "ds0CCA", celltype = cell_type, label = paste0(cell_type, "_ds0CCA"))  
+  
+  df8 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type])),
+                    method = "ds1unaligned", celltype = cell_type, label = paste0(cell_type, "_ds1unaligned"))
+  
+  df9 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type])),
+                    method = "ds0unaligned", celltype = cell_type, label = paste0(cell_type, "_ds0unaligned"))  
+  
+  if(exists("temp_result")){
+  temp_result <- rbind(temp_result,df1,df2,df3,df4,df5,df6,df7,df8,df9)
+  }else{
+    temp_result <- rbind(df1,df2,df3,df4,df5,df6,df7,df8,df9)
+  }
+
+  # v_ds0 <- dd[dd$type == "ds0",c(1:5)] %>% colMeans() %>% as.matrix()
+  # v_ds1 <- dd[dd$type == "ds1",c(1:5)] %>% colMeans() %>% as.matrix()
+  # v_ds2 <- dd[dd$type == "ds2",c(1:5)] %>% colMeans() %>% as.matrix()
+  # v <- c(norm(v_ds0-v_ds2),norm(v_ds1-v_ds2),norm(v_ds0-v_ds1))
+  # res[cell_type] <- v
+}
+# res
+
+PCAres <- temp_result[,c(-ncol(temp_result),-ncol(temp_result)+1,-ncol(temp_result)+2)] %>%
+  FactoMineR::PCA(ncp = 5, graph = F)
+dd <- cbind(PCAres[["ind"]][["coord"]], 
+            data.frame(method = temp_result[,"method"], celltype = temp_result[,"celltype"]), 
+            label = temp_result[,"label"])
+ggplot(dd) + geom_point(aes(x = Dim.1, y = Dim.2, color = method, shape = celltype), alpha = 0.2, size = 2) + theme_classic()
+
+mean_PCA <- lapply(levels(dd$label), function(type, dd){dd[dd$label == type,c(1:5)] %>% colMeans()},dd) %>% 
+    as.data.frame(col.names = levels(dd$label)) %>% t() %>% as.data.frame()
+
+mean_PCA$label <- rownames(mean_PCA)
+temp <- t(as.data.frame(strsplit(mean_PCA$label,"_")))
+colnames(temp) <- c("celltype","method")
+mean_PCA <- cbind(mean_PCA, temp)
+
+p <- ggplot(data = mean_PCA) + 
+  geom_point(aes(x = Dim.1, y = Dim.2, shape = celltype, color = method), size = 4) + 
+  theme(text = element_text(colour = "black", size = 16),
+        panel.grid.minor.y = element_blank(),panel.background = element_rect(fill = "white"),
+     panel.grid.minor.x = element_blank(),
+    panel.grid=element_blank(),
+          plot.title = element_text(size = 16,color="black",hjust = 0.5),
+          axis.title = element_text(size = 16,color ="black"), 
+          axis.text = element_text(size= 16,color = "black")) + scale_shape_manual(values = c(15:18)) + scale_color_manual(values = colors_list)
+p
 ```
 
-##只考虑SMC2
+##sup methods
 ```{r}
-selected_features <- read.table("SMC2") #SMC2 markers in ds2
-selected_features <- as.character(selected_features$V1)
+# selected_features <- read.table("SMC") #SMC2 markers in ds2
+# selected_features <- as.character(selected_features$V1)
+
+selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(union(read.table("SMC")$V1,read.table("FB")$V1)) #FBM
+
+selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(read.table("SMC")$V1) #SMC1
+
+selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(read.table("SMC2")$V1) #SMC2
+
+```
 
 
+```{r}
 temp <- get_data_table(ds0, highvar = T, type = "data")
 ds0_data <- matrix(data = 0, nrow = length(selected_features), ncol = length(colnames(temp)), 
                    byrow = FALSE, dimnames = list(selected_features,colnames(temp)))
@@ -134,10 +250,6 @@ for(cell_type in c("SMC2")){
   
   df[paste0("ds0xgb_",cell_type)] <-  t(ds0_data[,names(ds0_xgb[ds0_xgb == cell_type])])  %>% colMeans()
   
-  df[paste0("ds1harmony_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type]))) %>% colMeans()
-  
-  df[paste0("ds0harmony_",cell_type)] <- t(ds0_data[,names(ds0_harmony[ds0_harmony == cell_type])]) %>% colMeans()
-  
   df[paste0("ds1svm_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_svm[ds1_svm == cell_type]))) %>% colMeans()
   
   df[paste0("ds0svm_",cell_type)] <- t(ds0_data[,names(ds0_svm[ds0_svm == cell_type])]) %>% colMeans()
@@ -148,19 +260,33 @@ df <- df[,!is.na(df[1,])] #删除NA列
 # correlation heatmap
 ```{r fig.width=6, fig.height=6}
 corr <- cor(df,method = "spearman")
-pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
-        color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
-        border_color = NA, cluster_rows = F, cluster_cols = F,
-        main = "corr", angle_col = 45, show_rownames = T, na_col = "grey")
+# pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
+#         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
+#         border_color = NA, cluster_rows = F, cluster_cols = F,
+#         main = "corr", angle_col = 45, show_rownames = T, na_col = "grey")
 
 # corr[is.na(corr)] <- 0 #聚类时不能有NA
-pheatmap::pheatmap(corr,breaks = unique(c(seq(0.4, 1, length = 100))),
+pheatmap::pheatmap(corr,breaks = unique(c(seq(0.5, 1, length = 100))),
         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
-        border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 15,
+        border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 17,
         main = "SMC2", angle_col = 45, show_rownames = T) 
 
-library(ggcor)
-quickcor(df, type = "upper") + geom_circle2()
+
+# 
+# library(ggcor)
+# quickcor(df, type = "upper") + geom_circle2()
+```
+
+```{r}
+dd <- corr["ds2ref_SMC2",] %>% reshape2::melt()
+dd$x <- rownames(dd)
+tfunc <- function(x){
+  s <- strsplit(x,"_")[[1]][1]
+}
+dd$x <- as.character(lapply(dd$x,tfunc))
+dd <- dd[order(dd$value,decreasing = T),]
+dd$x <- factor(dd$x, levels = dd$x)
+ggplot(dd) + geom_bar(aes(x,weight = value, fill = x)) + bartheme + scale_y_continuous(breaks = seq(0.3, 1, 0.1)) + scale_fill_manual(values = colors_list) + coord_cartesian(ylim= c(0.3,1))
 ```
 
 #PCA

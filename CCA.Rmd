@@ -12,7 +12,7 @@ source("tianfengRwrappers.R")
 ```
 
 
-## 整合算法可能出现负值，运行SCENIC时舍弃了这些异常值
+## CCA method to integrate stromal cells in carotid and coronary artery plaques
 ```{r}
 #提取SMC细胞亚群
 SMCs_list <- list(ds0,ds2)
@@ -88,6 +88,61 @@ pheatmap::pheatmap(datamat, color = c("#FFFFFF", "#000000"),
         border_color = NA, cluster_rows = T, cluster_cols = FALSE,
         main = "CCA data", show_rownames = F,show_colnames = F)
 ```
+
+# fig.3
+## CCA as a unsupervised method to integrate stromal cells in all datasets
+```{r}
+#提取SMC细胞亚群
+SMCs_list <- list(ds0,ds1,ds2)
+
+SMCs_list <- lapply(X = SMCs_list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selSMCtion.method = "vst", nfeatures = 2000)
+})
+#需要分析的差异基因
+int_features <- SelectIntegrationFeatures(object.list = SMCs_list)
+#选择合并的anchor特征
+int_anchors <- FindIntegrationAnchors(object.list = SMCs_list, anchor.features = int_features)
+
+#根据anchor合并
+CAD_merge_CCA <- IntegrateData(anchorset = int_anchors)
+
+DefaultAssay(CAD_merge_CCA) <- "integrated"
+rm("SMCs_list","int_features","int_anchors")
+```
+
+```{r}
+CAD_merge_CCA <- ScaleData(CAD_merge_CCA, verbose = FALSE)
+CAD_merge_CCA <- RunPCA(CAD_merge_CCA, npcs = 30, verbose = FALSE)
+CAD_merge_CCA <- RunUMAP(CAD_merge_CCA, reduction = "pca", dims = 1:30)
+
+CAD_merge_CCA <- FindNeighbors(CAD_merge_CCA, reduction = "pca", dims = 1:30)
+CAD_merge_CCA <- FindClusters(CAD_merge_CCA, resolution = 0.2) # resolution 取0.1 或 0.2
+```
+
+```{r}
+DefaultAssay(CAD_merge_CCA) <- "SCT"
+umapplot(CAD_merge_CCA)
+f("DLX5",CAD_merge_CCA)
+
+
+temp <- data.frame(cell = colnames(CAD_merge_CCA))
+rownames(temp) <- temp$cell
+temp$cell <- NULL
+
+temp[WhichCells(ds0),'type'] <- rep("ds0",length(WhichCells(ds0)))
+temp[WhichCells(ds1),'type'] <- rep("ds1",length(WhichCells(ds1)))
+temp[WhichCells(ds2),'type'] <- rep("ds2",length(WhichCells(ds2)))
+
+table(temp)
+
+CAD_merge_CCA$orig.ident <- temp
+
+umapplot(CAD_merge_CCA, split.by = "orig.ident")
+
+saveRDS(CAD_merge_CCA,"CAD_merge_CCA.rds")
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

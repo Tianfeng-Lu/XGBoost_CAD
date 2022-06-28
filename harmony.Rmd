@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+# harmony
+```{r}
+library(harmony)
+Idents(ds0) <- "ds0"
+Idents(ds1) <- "ds1"
+Idents(ds2) <- "ds2"
+CAD_merge <- merge(ds0,c(ds1,ds2))
+CAD_merge$orig.ident <- Idents(CAD_merge) #存储原始分区
+
+CAD_merge <- CAD_merge %>% 
+  PercentageFeatureSet(pattern = "^MT-", col.name = "percent.mt") %>%
+  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+  RunPCA()
+
+# saveRDS(CAD_merge, "CAD_merge.rds")
+
+CAD_merge_harmony <- RunHarmony(CAD_merge, "orig.ident", plot_convergence = T, 
+                                project.dim = T, assay.use = "SCT")
+CAD_merge_harmony@reductions[["pca"]] <- CAD_merge_harmony@reductions[["harmony"]]
+
+CAD_merge_harmony <- CAD_merge_harmony %>% FindNeighbors(dims = 1:20) %>%
+  RunUMAP(dims = 1:20) %>% 
+  FindClusters(resolution = 0.1)
+
+PCAPlot(CAD_merge_harmony, split.by = "orig.ident")
+DimPlot(CAD_merge_harmony, reduction = "harmony", split.by = "orig.ident")
+
+CAD_merge_harmony <- FindClusters(CAD_merge_harmony, resolution = 0.2)
+umapplot(CAD_merge_harmony, split.by = "orig.ident")
+saveRDS(CAD_merge_harmony,"CAD_merge_harmony.rds")
+```
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
