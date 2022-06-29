@@ -55,7 +55,7 @@ XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed 
   if(!is.null(which(is.na(seuobj_label)))) # check vaild Idents
   {
     warning("Please ensure that seurat idents are in numeric forms")
-    seuobj_label <- as.numeric(as.character(seuobj$seurat_clusters))
+    seuobj_label <- as.numeric(Idents(seuobj))-1 
   }
   temp <- get_data_table(seuobj, highvar = T, type = "data")
   seuobj_data <- matrix(data = 0, nrow = bst_model$nfeatures, ncol = length(colnames(temp)), 

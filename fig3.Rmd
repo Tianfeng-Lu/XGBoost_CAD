@@ -38,7 +38,6 @@ multi_featureplot(c("FABP4", "RERGL", "NRIP2","HIGD1B"),ds2,labels = "")
 # 基因表达 小提琴图
 ds2 -> ds1
 无监督聚类
-
 ```{r}
 viotheme <- theme(plot.title = element_text(size = 17,color="black",hjust = 0.5),
                  axis.title = element_text(size = 17,color ="black"), 
@@ -600,12 +599,7 @@ data3$group <- "ref"
 
 data <- rbind(data1,data2,data3)
 
-scatter_theme <- theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        legend.key.size = unit(2,"cm"),
-        title = element_text(size = 20))
+
 
 ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 

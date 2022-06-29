@@ -15,6 +15,7 @@ library(xgboost)
 library(Matrix)
 set.seed(1)
 source("tianfengRwrappers.R")
+source("./XGBoost_wrapper.R")
 ```
 
 
@@ -757,19 +758,76 @@ fig
 ```
 
 
-# SMC2 比较 scmap vs xgboost vs unsupervised
+# SMC2 比较 scmap vs xgboost vs unaligned
 ```{r}
-# ds1SMC2 <- subset(ds1,ident = "SMC2")
-# ds1SMC2 <- subset(ds1,ident = 4) # new_supervised_clustering.Rmd: line 22 - 86
-ds1SMC2 <- subset(ds1,ident = "SMC2") #readRDS("ds1.rds") 
-# ds2SMC2 <- subset(ds2,ident = "SMC2")
-ds2SMC2 <- subset(ds2,ident = 4)
+## runxgb
+Idents(ds2) <- ds2$seurat_clusters
+bst_model <- XGBoost_train_from_seuobj(ds2)
+ds1 <- XGBoost_predict_from_seuobj(ds1, bst_model,celltype_assign = 1)
+ds1 <- project2ref_celltype(ds1, ds2)
+ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model)
+ds0 <- project2ref_celltype(ds0, ds2)
 
-ds1data <- get_data_table(ds1SMC2,type = "data")
+## runxscmap
+ref_sce <- mkref_scmap_from_seuobj(ds2)
+ds1 <- query_scmap_from_refsce(ds1, ref_sce)
+ds0 <- query_scmap_from_refsce(ds0, ref_sce)
+```
+
+
+```{r}
+geneset <- read.table("SMC2")
+ds1 <- AddModuleScore(ds1,features = geneset, name = 'SMC2_score')
+ds2 <- AddModuleScore(ds2,features = geneset, name = 'SMC2_score')
+
+ds1_xgb_SMC2 <- subset(ds1, ref_celltype == "SMC2")
+ds1_scmap_SMC2 <- subset(ds1, scmap_idents == "SMC2")
+ref_ds2SMC <- subset(ds2, Classification1 == "SMC2")
+
+genes_to_show <- c("DLX5","DLX6","DLX6-AS1","SOST","FRZB","RAMP4","ID1","IGFBP3","SMC2_score1")
+
+data1 <- FetchData(object = ds1_xgb_SMC2, vars = genes_to_show)
+rownames(data1) <-  NULL
+data1$group <- "xgb"
+
+data2 <- FetchData(object = ds1_scmap_SMC2, vars = genes_to_show)
+rownames(data2) <-  NULL
+data2$group <- "scmap"
+
+data3 <- FetchData(object = ref_ds2SMC, vars = genes_to_show)
+rownames(data3) <-  NULL
+data3$group <- "ref"
+
+data <- rbind(data1,data2,data3)
+
+# VlnPlot(ds1_scmap_SMC2,"SMC2_score1")
+
+ggplot(data, aes(x=DLX5, y=SMC2_score1, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) +
+  theme_classic() + scatter_theme
+
+ggplot(data, aes(x=SOST, y=FRZB, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) +
+  theme_classic() + scatter_theme
+
+ggplot(data, aes(x=SOST, y=FRZB, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) +
+  theme_classic() + scatter_theme
+```
+
+## unaligned
+```{r}
+ds2SMC2 <- subset(ds2, Classification1 == "SMC2")
 ds2data <- get_data_table(ds2SMC2,type = "data")
 
 
-genes_to_show <- c("DLX6","DLX6-AS1","DLX5","SOST")
+ds1SMC2 <- subset(ds1, Classification1 == "SMC2")
+ds1data <- get_data_table(ds1SMC2,type = "data")
+
+genes_to_show <- c("DLX6","DLX6-AS1","DLX5","LMO2")
 
 merge_expr <- data.frame()
 
@@ -784,8 +842,15 @@ for (i in lapply(genes_to_show, func1,"ds2",ds2data))
 
 rownames(merge_expr) <- NULL
 
+
+stat_theme <- stat_compare_means(aes(group = sample),
+                                 label = "p.format",
+                                 method = "wilcox.test", size = 6,
+                                 label.y = max(merge_expr$expr),
+                                 hide.ns = F)
+
 Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-head(Data_summary)
+# head(Data_summary)
 
 ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
   geom_split_violin(trim= F, color="white", scale = "area") + 
@@ -805,6 +870,85 @@ ggobj
 # ggsave("./SMC2supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ggsave("./SMC2unds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
 ```
+
+## xgboost
+```{r}
+ds1SMC2 <- subset(ds1, ref_celltype == "SMC2")
+ds1data <- get_data_table(ds1SMC2,type = "data")
+
+
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+# head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+
+ggsave("./fig4_scmap/SMC2xgbds2tods1.png", device = png, plot = ggobj, height = 5, width = 7)
+
+```
+
+## scmap
+```{r}
+ds1SMC2 <- subset(ds1, scmap_idents == "SMC2")
+ds1data <- get_data_table(ds1SMC2,type = "data")
+merge_expr <- data.frame()
+
+for (i in lapply(genes_to_show, func1,"ds1",ds1data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+for (i in lapply(genes_to_show, func1,"ds2",ds2data))
+{
+  merge_expr <- rbind(merge_expr,i)
+}
+
+rownames(merge_expr) <- NULL
+
+Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
+# head(Data_summary)
+
+ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
+  geom_split_violin(trim= F, color="white", scale = "area") + 
+  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
+             position=position_dodge(0.2),size= 1) + #绘制均值位置
+  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
+                width= 0.05, 
+                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
+                color="black",
+                alpha = 0.7,
+                size= 0.5) +
+  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
+  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
+  theme_classic()+ viotheme + stat_theme
+ggobj
+ggsave("./fig4_scmap/SMC2scmapds2tods1.png", device = png, plot = ggobj, height = 5, width = 7)
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 

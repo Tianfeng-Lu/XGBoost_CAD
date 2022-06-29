@@ -13,7 +13,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 source("tianfengRwrappers.R")
 ```
 
-## rat Frontier *GSE174098* carotid
+# rat Frontier *GSE174098* carotid
 ```{r fig.width=4, fig.height=8}
 rat10x <- CreateSeuratObject(Read10X("./rat_scRNAseq/"), names.field = 2, names.delim = "-",
                                    project = "rat", min.cells = 10, min.features = 300) %>%
@@ -58,6 +58,48 @@ ncol(rat10x0)
 ```
 
 
+```{r}
+mouse10x <- CreateSeuratObject(Read10X("./celldiscovery_mouse_10x/1/"), names.field = 2, names.delim = "-",
+                                   project = "mouse1", min.cells = 10, min.features = 300) %>%
+  PercentageFeatureSet(pattern = "^mt-", col.name = "percent.mt") 
+
+mouse10x2 <- CreateSeuratObject(Read10X("./celldiscovery_mouse_10x/2/"), names.field = 2, names.delim = "-",
+                                   project = "mouse2", min.cells = 10, min.features = 300) %>%
+  PercentageFeatureSet(pattern = "^mt-", col.name = "percent.mt") 
+
+mouse10x <- merge(mouse10x,mouse10x2)
+
+VlnPlot(mouse10x,"nCount_RNA") /
+VlnPlot(mouse10x,"percent.mt") /
+VlnPlot(mouse10x, "nFeature_RNA")
+
+mouse10x <- mouse10x %>% subset(subset = nFeature_RNA > 500 & nFeature_RNA < 5000 &
+                              nCount_RNA > 1000 &  nCount_RNA < 30000 & percent.mt < 10) %>%
+    SCTransform(vars.to.regress = "percent.mt", verbose = F) %>% 
+    RunPCA() %>% FindNeighbors(dims = 1:20) %>% 
+    RunUMAP(dims = 1:20) %>% 
+    FindClusters(resolution = 0.1)
+# table(mouse10x$orig.ident)
+
+
+umapplot(mouse10x)
+f("Lmo2",mouse10x)
+```
+
+
+```{r}
+SMC2_marker <- as.character(read.table("SMC2")$V1)
+library(homologene)
+
+mmSMC2_marker <- homologene(SMC2_marker, inTax = 9606, outTax = 10090)
+mmSMC2_marker <- mmSMC2_marker$`10090`
+mmSMC2_marker <- intersect(rownames(mouse10x), mmSMC2_marker)
+mouse10x <- AddModuleScore(mouse10x, list(mmSMC2_marker), name = "SMC2_score")
+f("SMC2_score1",mouse10x, min.cutoff = 0)
+Dotplot("SMC2_score1",mouse10x)
+```
+
+
 # mouse coronary *GSE131778*
 ```{r}
 mouse_coronary_countmatrix <- read.csv("./GSE131776_mouse_scRNAseq.txt", sep = "\t")
@@ -92,6 +134,7 @@ saveRDS(mousecor,"mousecor.rds")
 ```{r fig.width=4, fig.height=3}
 mousecor <- readRDS("mousecor.rds")
 f("Prdm16",mousecor, label.size = 7) + theme(legend.text = element_text(size = 20))
+
 ```
 
 
@@ -114,6 +157,10 @@ f("Acta2",mousecor_stromal,label.size = 6)
 p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mousecor_stromal,labels = NA,label.size = 6)
 ggsave("natmed_mouse_coronary_stromal2.png",plot = p, height = 12, width = 16,device = png)
 umapplot(mousecor_stromal, label.size = 6) + theme(legend.text = element_text(size = 18))
+
+mousecor_stromal <- AddModuleScore(mousecor_stromal, list(mmSMC2_marker), name = "SMC2_score")
+f("SMC2_score1", mousecor_stromal,min.cutoff = 0)
+
 ```
 
 # mouse carotid scRNAseq *GSE155513*
@@ -168,6 +215,8 @@ multi_featureplot(c("Bmp2","Bmp4","Bmp6"),mouse_carotid)
 
 ## BMP4 在这里EC的*大部分*中表达，而在人类样本中BMP4+ EC细胞是少数的
 markers <- FindAllMarkers(mouse_carotid,logfc.threshold = 0.5,min.diff.pct = 0.2, only.pos = T)
+
+
 ```
 ### stromal cells
 ```{r fig.width=4, fig.height=3}
@@ -181,6 +230,11 @@ mouse_carotid_stromal <- readRDS("mouse_carotid_stromal.rds")
 
 umapplot(mouse_carotid_stromal)
 f("Dlx2",mouse_carotid_stromal) #Dlx2,Dlx5,Dlx6共同定位
+
+mouse_carotid_stromal <- AddModuleScore(mouse_carotid_stromal, list(mmSMC2_marker), name = "SMC2_score")
+f("SMC2_score1", mouse_carotid_stromal,min.cutoff = 0)
+
+multi_featureplot(mmSMC2_marker[1:9],mouse_carotid_stromal,labels = NA, label = F)
 ```
 
 #### 分群表
@@ -199,11 +253,11 @@ table(group_tab[Dlx5poscells])
 
 #### 图
 ```{r fig.width=4, fig.height=3}
-levels(Idents(mouse_carotid_stromal)) <- c("SEM cell","Fibroblast1","SMC1","SMC2","Fibroblast2","DLX SMC","Unannotated","Unannotated")
-umapplot(mouse_carotid_stromal,label.size = 6,label = F) + theme(legend.text = element_blank())
+levels(Idents(mouse_carotid_stromal)) <- c("SEM cell","Fibroblast1","SMC","SMC","Fibroblast2","DLX SMC","Unannotated","Unannotated")
+umapplot(mouse_carotid_stromal,label.size = 6,label = F) %>% ggsave("./fig7_mouse/cir_mouse_carotid_stromalumap2.png",plot = ., height = 5, width = 6,device = png)
 
-p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mouse_carotid_stromal,labels = NA, label.size = 6)
-ggsave("cir_mouse_carotid_stromal2.png",plot = p, height = 12, width = 16,device = png)
+p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mouse_carotid_stromal,labels = NA, label.size = 6, label = F)
+ggsave("./fig7_mouse/cir_mouse_carotid_stromal2.png" ,plot = p, height = 12, width = 16,device = png)
 Dotplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Sost"),mouse_carotid_stromal)
 
 DLXposSMC_markers <- FindMarkers(mouse_carotid_stromal, ident.1 = "DLX SMC", logfc.threshold = 0.4, only.pos = T, min.diff.pct = 0.2)
@@ -327,7 +381,7 @@ volcano_plot <- function(filename, selected_genes, logFC_threshold = 1, pvalue_t
     )+
     ylab('-log10 (p-adj)') +
     xlab('log2 (FoldChange)') +
-    geom_vline(xintercept=c(-logFC_threshold,logFC_threshold),lty=3,col="black",lwd=0.5) +
+    geom_vline(xintercept=c(-logFC_threshold,logFC_threshold), lty=3,col="black",lwd=0.5) +
     geom_hline(yintercept =c(0,-log10(pvalue_threshold)),lty=3,col="black",lwd=0.5)
 }
 
