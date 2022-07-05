@@ -760,18 +760,16 @@ fig
 
 # SMC2 比较 scmap vs xgboost vs unaligned
 ```{r}
-## runxgb
 Idents(ds2) <- ds2$seurat_clusters
-bst_model <- XGBoost_train_from_seuobj(ds2)
-ds1 <- XGBoost_predict_from_seuobj(ds1, bst_model,celltype_assign = 1)
-ds1 <- project2ref_celltype(ds1, ds2)
-ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model)
-ds0 <- project2ref_celltype(ds0, ds2)
+bst_model <- XGBoost_train_from_seuobj(ds2, is_highvar = F)
 
-## runxscmap
-ref_sce <- mkref_scmap_from_seuobj(ds2)
-ds1 <- query_scmap_from_refsce(ds1, ref_sce)
-ds0 <- query_scmap_from_refsce(ds0, ref_sce)
+ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model, celltype_assign = 0, is_highvar = F)
+ds1 <- XGBoost_predict_from_seuobj(ds1, bst_model, celltype_assign = 0, is_highvar = F)
+ds0 <- project2ref_celltype(ds0, ds2)
+ds1 <- project2ref_celltype(ds1, ds2)
+
+ds2SMC2 <- subset(ds2, Classification1 == "SMC2")
+ds2data <- get_data_table(ds2SMC2, type = "data")
 ```
 
 
@@ -818,63 +816,12 @@ ggplot(data, aes(x=SOST, y=FRZB, color = group, group = group)) +
   theme_classic() + scatter_theme
 ```
 
-## unaligned
-```{r}
-ds2SMC2 <- subset(ds2, Classification1 == "SMC2")
-ds2data <- get_data_table(ds2SMC2,type = "data")
-
-
-ds1SMC2 <- subset(ds1, Classification1 == "SMC2")
-ds1data <- get_data_table(ds1SMC2,type = "data")
-
-genes_to_show <- c("DLX6","DLX6-AS1","DLX5","LMO2")
-
-merge_expr <- data.frame()
-
-for (i in lapply(genes_to_show, func1,"ds1",ds1data))
-{
-  merge_expr <- rbind(merge_expr,i)
-}
-for (i in lapply(genes_to_show, func1,"ds2",ds2data))
-{
-  merge_expr <- rbind(merge_expr,i)
-}
-
-rownames(merge_expr) <- NULL
-
-
-stat_theme <- stat_compare_means(aes(group = sample),
-                                 label = "p.format",
-                                 method = "wilcox.test", size = 6,
-                                 label.y = max(merge_expr$expr),
-                                 hide.ns = F)
-
-Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-# head(Data_summary)
-
-ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
-  geom_split_violin(trim= F, color="white", scale = "area") + 
-  geom_point(data = Data_summary,aes(x = gene, y= expr), pch=19,
-             position=position_dodge(0.2),size= 1) + #绘制均值位置
-  geom_errorbar(data = Data_summary, aes(ymin = expr-ci, ymax= expr+ci), 
-                width= 0.05, 
-                position= position_dodge(0.2), #误差线位置，和均值位置相匹配
-                color="black",
-                alpha = 0.7,
-                size= 0.5) +
-  scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
-  labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ viotheme + stat_theme
-ggobj
-# ggsave("./scmap/scmapsupds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
-# ggsave("./SMC2supds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
-ggsave("./SMC2unds2tods1.svg", device = svg, plot = ggobj, height = 6, width = 10)
-```
-
 ## xgboost
 ```{r}
+genes_to_show <- c("DLX6","DLX5","LMO2","DLX6-AS1")
+
 ds1SMC2 <- subset(ds1, ref_celltype == "SMC2")
-ds1data <- get_data_table(ds1SMC2,type = "data")
+ds1data <- get_data_table(ds1SMC2, type = "data")
 
 
 merge_expr <- data.frame()
@@ -891,7 +838,7 @@ for (i in lapply(genes_to_show, func1,"ds2",ds2data))
 rownames(merge_expr) <- NULL
 
 Data_summary <- Rmisc::summarySE(merge_expr, measurevar="expr", groupvars=c("sample","gene"))
-# head(Data_summary)
+head(Data_summary)
 
 ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
   geom_split_violin(trim= F, color="white", scale = "area") + 
@@ -905,7 +852,11 @@ ggobj <- ggplot(merge_expr,aes(x = gene, y = expr,fill = sample)) +
                 size= 0.5) +
   scale_fill_manual(values = c("#b1d6fb", "#fd9999"))+ 
   labs(y=("Log2 expression"),x=NULL,title = "Split violin") + 
-  theme_classic()+ viotheme + stat_theme
+  theme_classic()+ viotheme + stat_compare_means(aes(group = sample),
+                     label = "p.format",
+                     method = "wilcox.test", size = 6,
+                     label.y = max(merge_expr$expr),
+                      hide.ns = F)
 ggobj
 
 ggsave("./fig4_scmap/SMC2xgbds2tods1.png", device = png, plot = ggobj, height = 5, width = 7)
@@ -915,7 +866,7 @@ ggsave("./fig4_scmap/SMC2xgbds2tods1.png", device = png, plot = ggobj, height = 
 ## scmap
 ```{r}
 ds1SMC2 <- subset(ds1, scmap_idents == "SMC2")
-ds1data <- get_data_table(ds1SMC2,type = "data")
+ds1data <- get_data_table(ds1SMC2, type = "data")
 merge_expr <- data.frame()
 
 for (i in lapply(genes_to_show, func1,"ds1",ds1data))

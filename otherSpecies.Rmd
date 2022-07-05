@@ -59,8 +59,9 @@ ncol(rat10x0)
 
 
 ```{r}
-mouse10x <- CreateSeuratObject(Read10X("./celldiscovery_mouse_10x/1/"), names.field = 2, names.delim = "-",
-                                   project = "mouse1", min.cells = 10, min.features = 300) %>%
+mouse10x <- CreateSeuratObject(Read10X("./celldiscovery_mouse_10x/1/"), names.field = 2,
+                               names.delim = "-",project = "mouse1", min.cells = 10,
+                               min.features = 300) %>%
   PercentageFeatureSet(pattern = "^mt-", col.name = "percent.mt") 
 
 mouse10x2 <- CreateSeuratObject(Read10X("./celldiscovery_mouse_10x/2/"), names.field = 2, names.delim = "-",
@@ -134,7 +135,6 @@ saveRDS(mousecor,"mousecor.rds")
 ```{r fig.width=4, fig.height=3}
 mousecor <- readRDS("mousecor.rds")
 f("Prdm16",mousecor, label.size = 7) + theme(legend.text = element_text(size = 20))
-
 ```
 
 
@@ -151,8 +151,8 @@ mousecor_stromal <- readRDS("mousecor_stromal.rds")
 umapplot(mousecor_stromal, label.size = 6) + theme(legend.text = element_text(size = 20))
 multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6"), mousecor_stromal,labels = NA)
 
-
-levels(Idents(mousecor_stromal)) <- c("SMC1","Fibroblast1","Fibromyocyte","SMC1","Fibroblast2","SMC2")
+levels(Idents(mousecor_stromal)) <-
+  c("SMC1","Fibroblast1","Fibromyocyte","SMC1","Fibroblast2","SMC2")
 f("Acta2",mousecor_stromal,label.size = 6)
 p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mousecor_stromal,labels = NA,label.size = 6)
 ggsave("natmed_mouse_coronary_stromal2.png",plot = p, height = 12, width = 16,device = png)
@@ -185,7 +185,6 @@ mouse_carotid <- merge(allList[[1]],
 rm(allList)
 
 # saveRDS(mouse_carotid,"mouse_carotid.rds")
-# View(mouse_carotid)
 ```
 
 ### process
@@ -215,9 +214,8 @@ multi_featureplot(c("Bmp2","Bmp4","Bmp6"),mouse_carotid)
 
 ## BMP4 在这里EC的*大部分*中表达，而在人类样本中BMP4+ EC细胞是少数的
 markers <- FindAllMarkers(mouse_carotid,logfc.threshold = 0.5,min.diff.pct = 0.2, only.pos = T)
-
-
 ```
+
 ### stromal cells
 ```{r fig.width=4, fig.height=3}
 mouse_carotid_stromal <- subset(mouse_carotid,idents = c(0,2,1,7))
@@ -254,7 +252,7 @@ table(group_tab[Dlx5poscells])
 #### 图
 ```{r fig.width=4, fig.height=3}
 levels(Idents(mouse_carotid_stromal)) <- c("SEM cell","Fibroblast1","SMC","SMC","Fibroblast2","DLX SMC","Unannotated","Unannotated")
-umapplot(mouse_carotid_stromal,label.size = 6,label = F) %>% ggsave("./fig7_mouse/cir_mouse_carotid_stromalumap2.png",plot = ., height = 5, width = 6,device = png)
+umapplot(mouse_carotid_stromal,label.size = 6,label = T) %>% ggsave("./fig7_mouse/cir_mouse_carotid_stromalumap2.png",plot = ., height = 5, width = 6,device = png)
 
 p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mouse_carotid_stromal,labels = NA, label.size = 6, label = F)
 ggsave("./fig7_mouse/cir_mouse_carotid_stromal2.png" ,plot = p, height = 12, width = 16,device = png)
@@ -266,12 +264,60 @@ f("Dlx5",mouse_carotid_stromal)
 library(org.Mm.eg.db)
 GO_dotplot(rownames(DLXposSMC_markers), OrgDb = org.Mm.eg.db)
 ```
+
+
+#### XGBoost 跨物种
+```{r}
+library(homologene)
+mouse_gene2human_gene <- function(genelist){
+  mmgenes <- homologene(genelist, inTax = 10090, outTax = 9606)
+  mmgenes <- mmgenes[!duplicated(mmgenes$`10090`),]
+  genelist[genelist %in% mmgenes$`10090`] <- mmgenes$`9606`
+  return(genelist)
+}
+mouse_carotid_stromal@assays[["SCT"]]@data@Dimnames[[1]] <-
+  mouse_carotid_stromal@assays[["SCT"]]@data@Dimnames[[1]] %>% mouse_gene2human_gene()
+
+mouse_carotid_stromal@assays[["SCT"]]@var.features <- mouse_carotid_stromal@assays[["SCT"]]@var.features %>% mouse_gene2human_gene()
+
+f("DLX6", mouse_carotid_stromal)
+
+mouse_carotid_stromal <- query_scmap_from_refsce(mouse_carotid_stromal, ref_sce)
+
+# run xgboost wrapper
+mouse_carotid_stromal <- XGBoost_predict_from_seuobj(mouse_carotid_stromal, bst_model, 
+                                                     celltype_assign = 2)
+mouse_carotid_stromal <- project2ref_celltype(mouse_carotid_stromal, ds2)
+umapplot(mouse_carotid_stromal, group.by = "ref_celltype")
+umapplot(mouse_carotid_stromal, group.by = "scmap_idents")
+table(mouse_carotid_stromal$ref_celltype)
+```
+
+
+```{r}
+mousecor_stromal@assays[["SCT"]]@data@Dimnames[[1]] <-
+  mousecor_stromal@assays[["SCT"]]@data@Dimnames[[1]] %>% mouse_gene2human_gene()
+
+mousecor_stromal@assays[["SCT"]]@var.features <- mousecor_stromal@assays[["SCT"]]@var.features %>% mouse_gene2human_gene()
+
+f("DLX6", mousecor_stromal)
+
+mousecor_stromal <- query_scmap_from_refsce(mousecor_stromal, ref_sce)
+
+# run xgboost wrapper
+mousecor_stromal <- XGBoost_predict_from_seuobj(mousecor_stromal, bst_model, 
+                                                     celltype_assign = 2)
+mousecor_stromal <- project2ref_celltype(mousecor_stromal, ds2)
+umapplot(mousecor_stromal, group.by = "ref_celltype")
+umapplot(mousecor_stromal, group.by = "scmap_idents")
+table(mousecor_stromal$ref_celltype)
+```
+
 # human ds2
 ```{r}
 p <- multi_featureplot(c("ACTA2","CNN1","FN1","LUM","VCAM1","LY6A","DLX5","DLX6","LGALS3","SOST"), ds2, labels = NA, label.size = 6)
 
 ggsave("refds2_carotid_stromal.png",plot = p, height = 12, width = 12,device = png)
-
 
 p <- multi_featureplot(c("FRZB","SOST","DLX5","DLX6"), ds2, labels = NA, label.size = 6)
 ggsave("refds2_SMC2_carotid_stromal.png",plot = p, height = 7, width = 7,device = png)

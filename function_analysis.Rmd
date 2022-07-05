@@ -456,7 +456,7 @@ ggsave("ds1Fibromyocyte_down_enrich2.svg",device = svg, plot = cnetplot(down_enr
 emapplot(down_enrich.go, showCategory = 10)
 
 ```
-fig4
+
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

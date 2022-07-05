@@ -47,6 +47,7 @@ ds1 <- project2ref_celltype(ds1, ds2)
 ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model)
 ds0 <- project2ref_celltype(ds0, ds2)
 
+Idents(ds2) <- ds2$Classification1
 ref_sce <- mkref_scmap_from_seuobj(ds2)
 ds1 <- query_scmap_from_refsce(ds1, ref_sce)
 ds0 <- query_scmap_from_refsce(ds0, ref_sce)
@@ -60,7 +61,6 @@ umapplot(ds0, group.by = "scmap_idents")
 
 ## cell type assignment
 ```{r}
-
 ds1_scmap <- ds1$scmap_idents
 ds1_xgb <- ds1$ref_celltype
 ds0_scmap <- ds0$scmap_idents
@@ -79,7 +79,10 @@ ds0 <- RenameIdents(ds0, 'SMC' = 'SMC1')
 ds0_unaligned <- Idents(ds0)
 ```
 
+---
 
+# fig4 comparing among supervised methods and unsupervised methods
+## XGBoost vs unsupervised methods(CCA harmony)
 ```{r fig.width=6, fig.height=4}
 selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(union(read.table("SMC")$V1,read.table("FB")$V1))
 # selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(read.table("SMC2")$V1)
@@ -136,7 +139,7 @@ bartheme <- theme(plot.title = element_text(size = 18, color="black",hjust = 0.5
                  legend.text = element_text(size = 18),
                  legend.title= element_text(size = 18))
 ```
-# unsup PCA
+## unsup PCA
 ```{r}
   df[paste0("ds1CCA_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type]))) 
   
@@ -215,8 +218,7 @@ p <- ggplot(data = mean_PCA) +
           axis.text = element_text(size= 16,color = "black")) + scale_shape_manual(values = c(15:18)) + scale_color_manual(values = colors_list)
 p
 ```
-
-##sup methods
+## feature selection
 ```{r}
 # selected_features <- read.table("SMC") #SMC2 markers in ds2
 # selected_features <- as.character(selected_features$V1)
@@ -258,7 +260,7 @@ df <- df[,!is.na(df[1,])] #删除NA列
 ```
 
 # correlation heatmap
-```{r fig.width=6, fig.height=6}
+```{r fig.width=6, fig.height=5}
 corr <- cor(df,method = "spearman")
 # pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
 #         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
@@ -266,7 +268,7 @@ corr <- cor(df,method = "spearman")
 #         main = "corr", angle_col = 45, show_rownames = T, na_col = "grey")
 
 # corr[is.na(corr)] <- 0 #聚类时不能有NA
-pheatmap::pheatmap(corr,breaks = unique(c(seq(0.5, 1, length = 100))),
+pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
         border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 17,
         main = "SMC2", angle_col = 45, show_rownames = T) 

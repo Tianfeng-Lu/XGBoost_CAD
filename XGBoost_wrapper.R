@@ -81,6 +81,10 @@ XGBoost_predict_from_seuobj <- function(seuobj, bst_model, is_highvar = T, seed 
     seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc,rownames(predict_prop_seuobj))
   }else if(celltype_assign == 2){
     seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc2,rownames(predict_prop_seuobj))
+  }else if(celltype_assign == 0){
+    seuobj_res <- apply(predict_prop_seuobj,2,ident_assignfunc0,rownames(predict_prop_seuobj))
+  }else{
+    stop("celltype_assign invalid")
   }
   
   confuse_matrix <- table(seuobj_test_data$label, seuobj_res, dnn=c("true","pre"))
@@ -119,6 +123,12 @@ ident_assignfunc2 <- function(s, ident)
   } else {
     return("unassigned")
   }
+}
+
+ident_assignfunc0 <- function(s, ident)
+  # softmax
+{
+    return(ident[which(s == max(s))])
 }
 
 project2ref_celltype <- function(query_seuobj, ref_seuobj, 

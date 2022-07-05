@@ -40,7 +40,7 @@ ds1$svm_idents <- predict(object = svm_model, newdata = ds1_test_data$data, type
 
 umapplot(ds1,group.by = "svm_idents")
 ds1_svm <- project2ref_celltype(ds1, ds2, query_labels = "svm_idents",
-                                 ref_labels = c("seurat_clusters","Classification1"))$ref_celltype
+                                 ref_labels =c("seurat_clusters","Classification1"))$ref_celltype
 
 
 ```
@@ -68,8 +68,38 @@ umapplot(ds0,group.by = "svm_idents")
 umapplot(ds0,group.by = "ref_celltype")
 umapplot(ds0,group.by = "scmap_idents")
 ```
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+temp <- get_data_table(mousecor_stromal, highvar = T, type = "data")
+mousecor_stromal_data <- matrix(data = 0, nrow = 3000, ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
+intersect_features <- intersect(rownames(ds2_data), rownames(temp))
+mousecor_stromal_data[intersect_features,] <- temp[intersect_features,]
+rm(temp)
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+mousecor_stromal_test_data <- list(data = t(as(mousecor_stromal_data,"dgCMatrix")))
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+mousecor_stromal$svm_idents <- predict(object = svm_model, newdata = mousecor_stromal_test_data$data, type = "class")
+
+umapplot(mousecor_stromal,group.by = "svm_idents")
+mousecor_stromal_svm <- project2ref_celltype(mousecor_stromal, ds2, query_labels = "svm_idents",
+                                 ref_labels =c("seurat_clusters","Classification1"))$ref_celltype
+
+```
+```{r}
+temp <- get_data_table(mouse_carotid_stromal, highvar = T, type = "data")
+mouse_carotid_stromal_data <- matrix(data = 0, nrow = 3000, ncol = length(colnames(temp)), 
+                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
+intersect_features <- intersect(rownames(ds2_data), rownames(temp))
+mouse_carotid_stromal_data[intersect_features,] <- temp[intersect_features,]
+rm(temp)
+
+mouse_carotid_stromal_test_data <- list(data = t(as(mouse_carotid_stromal_data,"dgCMatrix")))
+
+mouse_carotid_stromal$svm_idents <- predict(object = svm_model, newdata = mouse_carotid_stromal_test_data$data, type = "class")
+
+umapplot(mouse_carotid_stromal,group.by = "svm_idents")
+mouse_carotid_stromal_svm <- project2ref_celltype(mouse_carotid_stromal, ds2,
+                                             query_labels = "svm_idents",
+                                 ref_labels=c("seurat_clusters","Classification1"))$ref_celltype
+
+```
