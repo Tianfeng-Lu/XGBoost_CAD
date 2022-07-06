@@ -655,7 +655,7 @@ ds1   0.7935582 0.8385574
 ds2   0.776329  0.9002053
 
 ```
-```{r ARI performance, fig.width=4, fig.height=6}
+```{r ARI performance, fig.width=4, fig.height=4}
 data <- data.frame(scmapARI = as.numeric(scmapARI_ds0), xgbARI = as.numeric(ds0_ARI), group = 'ds0') %>%
   rbind(data.frame(scmapARI = as.numeric(scmapARI_ds1), xgbARI = as.numeric(ds1_ARI), group = 'ds1')) %>% 
   rbind(data.frame(scmapARI = as.numeric(scmapARI_ds2), xgbARI = as.numeric(ds2_ARI), group = 'ds2'))
@@ -682,64 +682,31 @@ ggobj <- ggplot(data, aes(x = variable, y = ARI, color=group)) + #
              position = position_dodge(0.2)) +
   scale_fill_manual(values = aero_colors_list) +
   theme(panel.grid = element_line(colour = NA)) +
-  theme(legend.position="none") +
+  theme(legend.position="top") +
 theme(axis.title = element_text(size = 20,color = "black"),
         axis.text = element_text(size = 20,color = "black"),
         axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
+        axis.ticks = element_line(size = 1), legend.text = element_text(size = 15),
         title = element_text(size = 20))
 compare_means(ARI~variable, data=data, method = "t.test", paired = T, group.by = "group")
 
+ggobj
 
-ggsave("./scmap/scmapVSxgboost.svg", device = svg, width = 6, height = 8, plot = ggobj)
+ggsave("./scmapVSxgboost.svg", device = svg, width = 6, height = 8, plot = ggobj)
 ```
 
 
+# ds1 project to ds1
 
-# SMC2的鉴别
-
-### ds1 project to ds2
-## 构造ref
 ```{r}
-ds2 <- readRDS("ds2.rds")
-ref_sce <- as.SingleCellExperiment(ds2)
-logcounts(ref_sce) <- log2(counts(ref_sce) + 1)
-
-counts(ref_sce) <- as.matrix(counts(ref_sce))
-# normcounts(ref_sce) <- as.matrix(normcounts(ref_sce))
-logcounts(ref_sce) <- as.matrix(logcounts(ref_sce))
-
-rowData(ref_sce)$feature_symbol <- rownames(ref_sce)
-ref_sce <- ref_sce[!duplicated(rownames(ref_sce)), ]
-ref_sce <- selectFeatures(ref_sce, suppress_plot = FALSE)
-ref_sce <- indexCell(ref_sce)
+# ds2 <- readRDS("ds2.rds")
+ref_sce <- mkref_scmap_from_seuobj(ds1)
+ds1 <- query_scmap_from_refsce(ds1, ref_sce)
 ```
 
-## 构造query
 ```{r}
-ds1 <- readRDS("ds1.rds")
-query_sce <- as.SingleCellExperiment(ds1)
-logcounts(query_sce) <- log2(counts(query_sce) + 1)
+temp <- ds1$scmap_idents
 
-counts(query_sce) <- as.matrix(counts(query_sce))
-# normcounts(query_sce) <- as.matrix(normcounts(query_sce))
-logcounts(query_sce) <- as.matrix(logcounts(query_sce))
-
-rowData(query_sce)$feature_symbol <- rownames(query_sce)
-query_sce <- query_sce[!duplicated(rownames(query_sce)), ]
-query_sce <- selectFeatures(query_sce, suppress_plot = FALSE)
-query_sce <- indexCell(query_sce)
-```
-
-
-```{r}
-scmapCell_results <- scmapCell(query_sce, list(ds2 = metadata(ref_sce)$scmap_cell_index))
-scmapCell_clusters <- scmapCell2Cluster(
-  scmapCell_results, 
-  list(as.character(colData(ref_sce)$Classification1)))
-temp <- data.frame(scmapCell_clusters$scmap_cluster_labs[,"ds2"], row.names = colnames(ds1))
-Idents(ds1) <- temp
-ggsave("./scmap/scmap_ds1tods2.svg", device = svg, width = 6, height = 4, plot = umapplot(ds1))
 
 fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = 'pie',
         textposition = 'inside',
@@ -755,6 +722,7 @@ fig <- plot_ly(data.frame(table(temp)), labels = ~temp, values = ~Freq, type = '
          font = list(family = "Arial", size = 25, color = "black"))
 
 fig
+umapplot(ds1)
 ```
 
 

@@ -252,7 +252,7 @@ table(group_tab[Dlx5poscells])
 #### 图
 ```{r fig.width=4, fig.height=3}
 levels(Idents(mouse_carotid_stromal)) <- c("SEM cell","Fibroblast1","SMC","SMC","Fibroblast2","DLX SMC","Unannotated","Unannotated")
-umapplot(mouse_carotid_stromal,label.size = 6,label = T) %>% ggsave("./fig7_mouse/cir_mouse_carotid_stromalumap2.png",plot = ., height = 5, width = 6,device = png)
+umapplot(mouse_carotid_stromal,label.size = 6,label = F) %>% ggsave("./fig7_mouse/cir_mouse_carotid_stromalumap2.png",plot = ., height = 5, width = 6,device = png)
 
 p <- multi_featureplot(c("Acta2","Cnn1","Fn1","Lum","Vcam1","Ly6a","Dlx5","Dlx6","Lgals3"),mouse_carotid_stromal,labels = NA, label.size = 6, label = F)
 ggsave("./fig7_mouse/cir_mouse_carotid_stromal2.png" ,plot = p, height = 12, width = 16,device = png)

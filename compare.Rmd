@@ -48,7 +48,7 @@ ds0 <- XGBoost_predict_from_seuobj(ds0, bst_model)
 ds0 <- project2ref_celltype(ds0, ds2)
 
 Idents(ds2) <- ds2$Classification1
-ref_sce <- mkref_scmap_from_seuobj(ds2)
+  ref_sce <- mkref_scmap_from_seuobj(ds2)
 ds1 <- query_scmap_from_refsce(ds1, ref_sce)
 ds0 <- query_scmap_from_refsce(ds0, ref_sce)
 
@@ -62,9 +62,9 @@ umapplot(ds0, group.by = "scmap_idents")
 ## cell type assignment
 ```{r}
 ds1_scmap <- ds1$scmap_idents
-ds1_xgb <- ds1$ref_celltype
+ds1_XGB <- ds1$ref_celltype
 ds0_scmap <- ds0$scmap_idents
-ds0_xgb <- ds0$ref_celltype
+ds0_XGB <- ds0$ref_celltype
 ds2_ref <- ds2$Classification1
 
 ds1_harmony <- subset(CAD_merge_harmony, orig.ident == "ds1")$ds2_celltype
@@ -73,41 +73,46 @@ ds0_harmony <- subset(CAD_merge_harmony, orig.ident == "ds0")$ds2_celltype
 ds1_CCA <- subset(CAD_merge_CCA, orig.ident == "ds1")$ds2_celltype
 ds0_CCA <- subset(CAD_merge_CCA, orig.ident == "ds0")$ds2_celltype
 
-ds1_unaligned <- ds1$Classification1
+ds1_Unaligned <- ds1$Classification1
 Idents(ds0) <- ds0$Classification1
 ds0 <- RenameIdents(ds0, 'SMC' = 'SMC1')
-ds0_unaligned <- Idents(ds0)
+ds0_Unaligned <- Idents(ds0)
 ```
 
 ---
 
 # fig4 comparing among supervised methods and unsupervised methods
-## XGBoost vs unsupervised methods(CCA harmony)
+## XGBoost vs unsupervised methods(CCA & harmony)
 ```{r fig.width=6, fig.height=4}
 selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(union(read.table("SMC")$V1,read.table("FB")$V1))
 # selected_features <-intersect(rownames(ds2),rownames(ds1)) %>%intersect(rownames(ds0))%>% intersect(read.table("SMC2")$V1)
 df <- data.frame(row.names = selected_features)
-for(cell_type in c("SMC2")){
+for(cell_type in c("SMC1")){
   df[paste0("ds2ref_",cell_type)] <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type]))) %>% colMeans()
   
-  df[paste0("ds1xgb_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type]))) %>% colMeans()
+  df[paste0("ds1XGB_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_XGB[ds1_XGB == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0xgb_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_xgb[ds0_xgb == cell_type]))) %>% colMeans()
+  df[paste0("ds0XGB_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_XGB[ds0_XGB == cell_type]))) %>% colMeans()
   
-  df[paste0("ds1harmony_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type]))) %>% colMeans()
+  df[paste0("ds1Harmony_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0harmony_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_harmony[ds0_harmony == cell_type]))) %>% colMeans()
+  df[paste0("ds0Harmony_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_harmony[ds0_harmony == cell_type]))) %>% colMeans()
   
   df[paste0("ds1CCA_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type]))) %>% colMeans()
   
   df[paste0("ds0CCA_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type]))) %>% colMeans()
   
-  df[paste0("ds1unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type]))) %>% colMeans()
+  df[paste0("ds1Unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_Unaligned[ds1_Unaligned == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type]))) %>% colMeans()
+  df[paste0("ds0Unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_Unaligned[ds0_Unaligned == cell_type]))) %>% colMeans()
 }
 df <- t(na.omit(t(df)))
 corr <- cor(df,method = "spearman")
+
+tfunc <- function(x){
+  s <- strsplit(x,"_")[[1]][1]
+}
+
 rownames(corr) <- as.character(lapply(rownames(corr),tfunc))
 colnames(corr) <- as.character(lapply(colnames(corr),tfunc))
 corr[is.na(corr)] <- 0 #聚类时不能有NA
@@ -116,16 +121,12 @@ pheatmap::pheatmap(corr,breaks = unique(c(seq(0.5, 1, length = 100))),
         border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 17,
         main = "SMC2", angle_col = 45, show_rownames = T) 
 
-dd <- corr["ds2ref_Fibromyocyte",] %>% reshape2::melt()
+dd <- corr["ds2ref",] %>% reshape2::melt()
 dd$x <- rownames(dd)
-tfunc <- function(x){
-  s <- strsplit(x,"_")[[1]][1]
-}
+
 dd$x <- as.character(lapply(dd$x,tfunc))
 dd <- dd[order(dd$value,decreasing = T),]
 dd$x <- factor(dd$x, levels = dd$x)
-ggplot(dd) + geom_bar(aes(x,weight = value, fill = x)) + bartheme + scale_y_continuous(breaks = seq(0.7, 1, 0.1)) + scale_fill_manual(values = colors_list) + coord_cartesian(ylim= c(0.7,1))
-
 
 bartheme <- theme(plot.title = element_text(size = 18, color="black",hjust = 0.5),
                  axis.title = element_text(size = 18,color ="black"),
@@ -138,16 +139,23 @@ bartheme <- theme(plot.title = element_text(size = 18, color="black",hjust = 0.5
                  legend.position = "top",
                  legend.text = element_text(size = 18),
                  legend.title= element_text(size = 18))
+
+
+ggplot(dd) + geom_bar(aes(x,weight = value, fill = x)) + bartheme + scale_y_continuous(breaks = seq(0.7, 1, 0.1)) + scale_fill_manual(values = colors_list) + coord_cartesian(ylim= c(0.7,1)) + ylab("Spearman Correlation") + xlab("Dataset and Method")
+
+
+
 ```
+
 ## unsup PCA
 ```{r}
   df[paste0("ds1CCA_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_CCA[ds1_CCA == cell_type]))) 
   
   df[paste0("ds0CCA_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type]))) 
   
-  df[paste0("ds1unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type]))) %>% colMeans()
+  df[paste0("ds1Unaligned_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_Unaligned[ds1_Unaligned == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type]))) %>% colMeans()
+  df[paste0("ds0Unaligned_",cell_type)] <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_Unaligned[ds0_Unaligned == cell_type]))) %>% colMeans()
   
   rm(temp_result)
 for(cell_type in c("Fibromyocyte")){
@@ -155,11 +163,11 @@ for(cell_type in c("Fibromyocyte")){
   df1 <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type])),
                     method = "ds2ref", celltype = cell_type, label = paste0(cell_type, "_ds2ref"))
   
-  df2 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type])),
-                    method = "ds1xgb", celltype = cell_type, label = paste0(cell_type, "_ds1xgb"))  
+  df2 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_XGB[ds1_XGB == cell_type])),
+                    method = "ds1XGB", celltype = cell_type, label = paste0(cell_type, "_ds1XGB"))  
   
-  df3 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_xgb[ds0_xgb == cell_type])),
-                    method = "ds0xgb", celltype = cell_type, label = paste0(cell_type, "_ds0xgb"))
+  df3 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_XGB[ds0_XGB == cell_type])),
+                    method = "ds0XGB", celltype = cell_type, label = paste0(cell_type, "_ds0XGB"))
   
   df4 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type])),
                     method = "ds1harmony", celltype = cell_type, label = paste0(cell_type, "_ds1harmony"))
@@ -172,11 +180,11 @@ for(cell_type in c("Fibromyocyte")){
   df7 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_CCA[ds0_CCA == cell_type])),
                     method = "ds0CCA", celltype = cell_type, label = paste0(cell_type, "_ds0CCA"))  
   
-  df8 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_unaligned[ds1_unaligned == cell_type])),
-                    method = "ds1unaligned", celltype = cell_type, label = paste0(cell_type, "_ds1unaligned"))
+  df8 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_Unaligned[ds1_Unaligned == cell_type])),
+                    method = "ds1Unaligned", celltype = cell_type, label = paste0(cell_type, "_ds1Unaligned"))
   
-  df9 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_unaligned[ds0_unaligned == cell_type])),
-                    method = "ds0unaligned", celltype = cell_type, label = paste0(cell_type, "_ds0unaligned"))  
+  df9 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_Unaligned[ds0_Unaligned == cell_type])),
+                    method = "ds0Unaligned", celltype = cell_type, label = paste0(cell_type, "_ds0Unaligned"))  
   
   if(exists("temp_result")){
   temp_result <- rbind(temp_result,df1,df2,df3,df4,df5,df6,df7,df8,df9)
@@ -218,7 +226,9 @@ p <- ggplot(data = mean_PCA) +
           axis.text = element_text(size= 16,color = "black")) + scale_shape_manual(values = c(15:18)) + scale_color_manual(values = colors_list)
 p
 ```
-## feature selection
+
+## XGBoost vs unsupervised methods(CCA harmony)
+### feature selection
 ```{r}
 # selected_features <- read.table("SMC") #SMC2 markers in ds2
 # selected_features <- as.character(selected_features$V1)
@@ -242,19 +252,19 @@ rm(temp)
 
 df <- data.frame(row.names = selected_features)
 for(cell_type in c("SMC2")){
-  df[paste0("ds2ref_",cell_type)] <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type]))) %>% colMeans()
+  df[paste0("ds2ref")] <- data.frame(FetchData(ds2, selected_features, cells = names(ds2_ref[ds2_ref == cell_type]))) %>% colMeans()
   
-  df[paste0("ds1scmap_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_scmap[ds1_scmap == cell_type]))) %>% colMeans() 
+  df[paste0("ds1scmap")] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_scmap[ds1_scmap == cell_type]))) %>% colMeans() 
   
-  df[paste0("ds0scmap_",cell_type)] <- t(ds0_data[,names(ds0_scmap[ds0_scmap == cell_type])]) %>% colMeans()
+  df[paste0("ds0scmap")] <- t(ds0_data[,names(ds0_scmap[ds0_scmap == cell_type])]) %>% colMeans()
   
-  df[paste0("ds1xgb_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type]))) %>% colMeans()
+  df[paste0("ds1XGB")] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_XGB[ds1_XGB == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0xgb_",cell_type)] <-  t(ds0_data[,names(ds0_xgb[ds0_xgb == cell_type])])  %>% colMeans()
+  df[paste0("ds0XGB")] <-  t(ds0_data[,names(ds0_XGB[ds0_XGB == cell_type])])  %>% colMeans()
   
-  df[paste0("ds1svm_",cell_type)] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_svm[ds1_svm == cell_type]))) %>% colMeans()
+  df[paste0("ds1SVM")] <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_svm[ds1_svm == cell_type]))) %>% colMeans()
   
-  df[paste0("ds0svm_",cell_type)] <- t(ds0_data[,names(ds0_svm[ds0_svm == cell_type])]) %>% colMeans()
+  df[paste0("ds0SVM")] <- t(ds0_data[,names(ds0_svm[ds0_svm == cell_type])]) %>% colMeans()
 }
 df <- df[,!is.na(df[1,])] #删除NA列
 ```
@@ -262,21 +272,13 @@ df <- df[,!is.na(df[1,])] #删除NA列
 # correlation heatmap
 ```{r fig.width=6, fig.height=5}
 corr <- cor(df,method = "spearman")
-# pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
-#         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
-#         border_color = NA, cluster_rows = F, cluster_cols = F,
-#         main = "corr", angle_col = 45, show_rownames = T, na_col = "grey")
 
-# corr[is.na(corr)] <- 0 #聚类时不能有NA
 pheatmap::pheatmap(corr,breaks = unique(c(seq(0.6, 1, length = 100))),
         color = colorRampPalette(c("#1E90FF", "white", "#ff2121"))(100),
         border_color = NA, cluster_rows = T, cluster_cols = T, fontsize = 17,
         main = "SMC2", angle_col = 45, show_rownames = T) 
 
 
-# 
-# library(ggcor)
-# quickcor(df, type = "upper") + geom_circle2()
 ```
 
 ```{r}
@@ -307,12 +309,12 @@ for(cell_type in c("SMC1","Fibromyocyte","Pericyte","SMC2")){
   df3 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_scmap[ds0_scmap == cell_type])),
                     method = "ds0scmap", celltype = cell_type, label = paste0(cell_type, "_ds0scmap"))  
   
-  df4 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_xgb[ds1_xgb == cell_type])),
-                    method = "ds1xgb", celltype = cell_type, label = paste0(cell_type, "_ds1xgb"))  
+  df4 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_XGB[ds1_XGB == cell_type])),
+                    method = "ds1XGB", celltype = cell_type, label = paste0(cell_type, "_ds1XGB"))  
   
   if(cell_type != "SMC2"){
-  df5 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_xgb[ds0_xgb == cell_type])),
-                    method = "ds0xgb", celltype = cell_type, label = paste0(cell_type, "_ds0xgb"))}
+  df5 <- data.frame(FetchData(ds0, selected_features, cells = names(ds0_XGB[ds0_XGB == cell_type])),
+                    method = "ds0XGB", celltype = cell_type, label = paste0(cell_type, "_ds0XGB"))}
   
   df6 <- data.frame(FetchData(ds1, selected_features, cells = names(ds1_harmony[ds1_harmony == cell_type])),
                     method = "ds1harmony", celltype = cell_type, label = paste0(cell_type, "_ds1harmony"))
@@ -324,16 +326,9 @@ for(cell_type in c("SMC1","Fibromyocyte","Pericyte","SMC2")){
   }else{
     temp_result <- rbind(df1,df2,df3,df4,df5,df6,df7)
   }
-  
 
-  # 
-  # v_ds0 <- dd[dd$type == "ds0",c(1:5)] %>% colMeans() %>% as.matrix()
-  # v_ds1 <- dd[dd$type == "ds1",c(1:5)] %>% colMeans() %>% as.matrix()
-  # v_ds2 <- dd[dd$type == "ds2",c(1:5)] %>% colMeans() %>% as.matrix()
-  # v <- c(norm(v_ds0-v_ds2),norm(v_ds1-v_ds2),norm(v_ds0-v_ds1))
-  # res[cell_type] <- v
 }
-# res
+
 
 PCAres <- temp_result[,c(-ncol(temp_result),-ncol(temp_result)+1,-ncol(temp_result)+2)] %>%
   FactoMineR::PCA(ncp = 5, graph = F)
@@ -366,9 +361,6 @@ ggsave("PCA_plot.svg",plot = p, width = 6, height = 4, device = svg)
 save.image()
 ```
 
-```{r}
-
-```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.

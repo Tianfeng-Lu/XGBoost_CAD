@@ -177,11 +177,11 @@ ggsave("PApretrain_features.png", device = png, plot = ggobj, width = 8, height 
 ```{r fig.width=6,fig.height=6}
 fea <- read.csv("./datatable/ACtrain_features.csv")
 ggobj <- multi_featureplot(fea$Feature[1:16],ds2_AC,labels = "",label = F)
-ggsave("ACmodel_features.png", device = png, plot = ggobj, width = 8, height = 8)
+ggsave("./supp/ACmodel_features.png", device = png, plot = ggobj, width = 10, height = 8)
 
 fea <- read.csv("./datatable/PAtrain_features.csv")
 ggobj <- multi_featureplot(fea$Feature[1:16],ds2_PA,labels = "",label = F)
-ggsave("PAmodel_features.png", device = png, plot = ggobj, width = 8, height = 8)
+ggsave("./supp/PAmodel_features.png", device = png, plot = ggobj, width = 10, height = 8)
 ```
 
 ### model ds2

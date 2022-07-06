@@ -285,156 +285,173 @@ geom_split_violin <- function (mapping = NULL, data = NULL, stat = "ydensity", p
 
 ---
 
-## scatter 比较 fig.3 DCN 和 LUM 在 FbM 中 sup vs unsup
-### ds2 -> ds0
+## scatter 比较 
+
 ```{r}
-bst_model <- readRDS("ds2_model.rds")
-ds2_data <- get_data_table(ds2, highvar = F, type = "data")
-Idents(ds2) <- ds2$seurat_clusters
-Idents(ds0) <- ds0$seurat_clusters
-temp <- get_data_table(ds0, highvar = F, type = "data")
-ds0_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
-                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
-for(i in intersect(rownames(ds2_data), rownames(temp))){
-  ds0_data[i,] <- temp[i,]
-}
-rm(temp)
-ds0_label <- as.numeric(as.character(Idents(ds0)))
-colnames(ds0_data) <- NULL
-ds0_test_data <- list(data = t(as(ds0_data,"dgCMatrix")), label = ds0_label)
-ds0_test <- xgb.DMatrix(data = ds0_test_data$data,label = ds0_test_data$label)
-
-#预测结果
-predict_ds0_test <- predict(bst_model, newdata = ds0_test)
-predict_prop_ds0 <- matrix(data=predict_ds0_test, nrow = length(levels(Idents(ds2))), 
-                           ncol = ncol(ds0), byrow = FALSE, 
-                           dimnames = list(levels(Idents(ds2)),colnames(ds0)))
-
-## 得到分群结果
-ds0_res <- apply(predict_prop_ds0,2,func,rownames(predict_prop_ds0))
-Idents(ds0) <- factor(ds0_res,levels = c(0:4))
-umapplot(ds0)
-ds0$supclustering <- Idents(ds0) #保存监督聚类结果
+scatter_theme2 <- 
+  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
+        axis.text = element_text(size = 20,color = "black"),
+        axis.line = element_line(size = 1),
+        axis.ticks = element_line(size = 1),
+        title = element_text(size = 20))
 ```
 
+
+### ds2 -> ds0
+
 ```{r}
-Idents(ds0) <- ds0$supclustering
-sup_ds0FBM <- subset(ds0, ident = "1")
-Idents(ds0) <- ds0$Classification1
-unsup_ds0FBM <- subset(ds0, ident = "Fibromyocyte")
-ref_unsup_ds2FBM <- subset(ds2, ident = "1")
+ref_ds2FBM <- subset(ds2,Classification1 == "Fibromyocyte")
 
-data1 <- FetchData(object = sup_ds0FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+unaligned_ds0FBM <- subset(ds0,Classification1 == "Fibromyocyte")
+harmony_ds0FbM <- subset(CAD_merge_harmony, orig.ident == "ds0" & ds2_celltype == "Fibromyocyte") #harmony
+CCA_ds0FbM <- subset(CAD_merge_CCA, orig.ident == "ds0" & ds2_celltype == "Fibromyocyte")
+
+xgb_ds0FbM <- subset(ds0, ref_celltype == "Fibromyocyte")
+```
+
+### fig.3 harmony vs xgb vs ref
+```{r}
+data1 <- FetchData(object = xgb_ds0FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data1) <-  NULL
-data1$group <- "sup"
+data1$group <- "xgb_ds0"
 
-data2 <- FetchData(object = unsup_ds0FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+data2 <- FetchData(object = harmony_ds0FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data2) <-  NULL
-data2$group <- "unsup"
+data2$group <- "Harmony_ds0"
 
-data3 <- FetchData(object = ref_unsup_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+data3 <- FetchData(object = ref_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data3) <-  NULL
-data3$group <- "ref"
+data3$group <- "ref_ds2"
 
 data <- rbind(data1,data2,data3)
 
 ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
-
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 ggplot(data, aes(x=LUM, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 
 ggplot(data, aes(x=TAGLN, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() +  theme(axis.title = element_text(size = 20,color = "black"),
-        axis.text = element_text(size = 20,color = "black"),
-        axis.line = element_line(size = 1),
-        axis.ticks = element_line(size = 1),
-        title = element_text(size = 20))
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+```
+
+## supp
+### unaligned vs CCA vs ref vs xgb
+```{r}
+data1 <- FetchData(object = xgb_ds0FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data1) <-  NULL
+data1$group <- "xgb_ds0"
+
+data2 <- FetchData(object = CCA_ds0FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data2) <-  NULL
+data2$group <- "CCA_ds0"
+
+data3 <- FetchData(object = unaligned_ds0FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data3) <-  NULL
+data3$group <- "unaligned_ds0"
+
+data4 <- FetchData(object = ref_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data4) <-  NULL
+data4$group <- "ref_ds2"
+
+
+
+data <- rbind(data1,data2,data3,data4)
+
+ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+
+ggplot(data, aes(x=LUM, y=ACTA2, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+
+ggplot(data, aes(x=TAGLN, y=ACTA2, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 
 ```
-## scatter 比较 fig.3 DCN 和 LUM 在 FbM 中 sup vs unsup
+
+
+
+## scatter 
 ### ds2 -> ds1
 ```{r}
-bst_model <- readRDS("ds2_model.rds")
-ds2_data <- get_data_table(ds2, highvar = F, type = "data")
-Idents(ds2) <- ds2$seurat_clusters
-Idents(ds1) <- ds1$seurat_clusters
-temp <- get_data_table(ds1, highvar = F, type = "data")
-ds1_data <- matrix(data=0, nrow = length(rownames(ds2_data)), ncol = length(colnames(temp)), 
-                   byrow = FALSE, dimnames = list(rownames(ds2_data),colnames(temp)))
-for(i in intersect(rownames(ds2_data), rownames(temp))){
-  ds1_data[i,] <- temp[i,]
-}
-rm(temp)
-ds1_label <- as.numeric(as.character(Idents(ds1)))
-colnames(ds1_data) <- NULL
-ds1_test_data <- list(data = t(as(ds1_data,"dgCMatrix")), label = ds1_label)
-ds1_test <- xgb.DMatrix(data = ds1_test_data$data,label = ds1_test_data$label)
+ref_ds2FBM <- subset(ds2,Classification1 == "Fibromyocyte")
 
-#预测结果
-predict_ds1_test <- predict(bst_model, newdata = ds1_test)
-predict_prop_ds1 <- matrix(data=predict_ds1_test, nrow = length(levels(Idents(ds2))), 
-                           ncol = ncol(ds1), byrow = FALSE, 
-                           dimnames = list(levels(Idents(ds2)),colnames(ds1)))
+unaligned_ds1FBM <- subset(ds1,Classification1 == "Fibromyocyte")
+harmony_ds1FbM <- subset(CAD_merge_harmony, orig.ident == "ds1" & ds2_celltype == "Fibromyocyte") #harmony
+CCA_ds1FbM <- subset(CAD_merge_CCA, orig.ident == "ds1" & ds2_celltype == "Fibromyocyte")
 
-## 得到分群结果
-ds1_res <- apply(predict_prop_ds1,2,func,rownames(predict_prop_ds1))
-Idents(ds1) <- factor(ds1_res,levels = c(0:4))
-umapplot(ds1)
-ds1$supclustering <- Idents(ds1) #保存监督聚类结果
+xgb_ds1FbM <- subset(ds1, ref_celltype == "Fibromyocyte")
 ```
 
+### fig.3 harmony vs xgb vs ref
 ```{r}
-Idents(ds1) <- ds1$supclustering
-sup_ds1FBM <- subset(ds1, ident = "1")
-Idents(ds1) <- ds1$Classification1
-unsup_ds1FBM <- subset(ds1, ident = "Fibromyocyte")
-ref_unsup_ds2FBM <- subset(ds2, ident = "1")
-
-data1 <- FetchData(object = sup_ds1FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+data1 <- FetchData(object = xgb_ds1FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data1) <-  NULL
-data1$group <- "sup"
+data1$group <- "xgb_ds1"
 
-data2 <- FetchData(object = unsup_ds1FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+data2 <- FetchData(object = harmony_ds1FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data2) <-  NULL
-data2$group <- "unsup"
+data2$group <- "Harmony_ds1"
 
-data3 <- FetchData(object = ref_unsup_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+data3 <- FetchData(object = ref_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
 rownames(data3) <-  NULL
-data3$group <- "ref"
+data3$group <- "ref_ds2"
 
 data <- rbind(data1,data2,data3)
 
-
-
 ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() + scatter_theme
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 
 ggplot(data, aes(x=LUM, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() + scatter_theme
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 
 ggplot(data, aes(x=TAGLN, y=ACTA2, color = group, group = group)) +
   geom_point(size = 3,alpha = 0.1) + 
-  geom_smooth(method=lm , se=TRUE) +
-  theme_classic() + scatter_theme
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+
+```
+
+## supp
+### unaligned vs CCA vs ref vs xgb
+```{r}
+data1 <- FetchData(object = xgb_ds1FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data1) <-  NULL
+data1$group <- "xgb_ds1"
+
+data2 <- FetchData(object = CCA_ds1FbM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data2) <-  NULL
+data2$group <- "CCA_ds1"
+
+data3 <- FetchData(object = unaligned_ds1FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data3) <-  NULL
+data3$group <- "unaligned_ds1"
+
+data4 <- FetchData(object = ref_ds2FBM, vars = c("LUM", "ACTA2","BGN","TAGLN"))
+rownames(data4) <-  NULL
+data4$group <- "ref_ds2"
+
+
+
+data <- rbind(data1,data2,data3,data4)
+
+ggplot(data, aes(x=LUM, y=BGN, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+
+ggplot(data, aes(x=LUM, y=ACTA2, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
+
+ggplot(data, aes(x=TAGLN, y=ACTA2, color = group, group = group)) +
+  geom_point(size = 3,alpha = 0.1) + 
+  geom_smooth(method=lm , se=TRUE) + scatter_theme2
 
 ```
 
